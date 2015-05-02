@@ -39,4 +39,12 @@ To use this plugin you simply need to include a youtube URL in markdown link suc
 [plugin:youtube](https://www.youtube.com/watch?v=BK8guP9ov2U)
 ```
 
+Will be converted into the following embeded HTML:
+
+```
+<div class="grav-youtube"><iframe src="https://www.youtube.com/embed/BK8guP9ov2U" frameborder="0" allowfullscreen=""></iframe></div>
+```
+
+CSS is also loaded to provide the appropriate responsive layout.
+
 [grav]: http://github.com/getgrav/grav
