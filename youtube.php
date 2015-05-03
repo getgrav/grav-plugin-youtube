@@ -72,7 +72,7 @@ class YoutubePlugin extends Plugin
                 }
 
                 // build the replacement embeded HTML string
-                $replace = '<div class="grav-youtube"><iframe src="https://www.youtube.com/embed/' . $matches[1] . '" frameborder="0" allowfullscreen></iframe></div>';
+                $replace = '<div class="grav-youtube"><iframe src="https://www.youtube.com/embed/' . $matches[1] . '?vq=hd1080" frameborder="0" allowfullscreen></iframe></div>';
 
                 // do the replacement
                 return str_replace($search, $replace, $search);

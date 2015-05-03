@@ -1,11 +1,12 @@
 .grav-youtube {
     height: 0;
     padding-top: 25px;
-    padding-bottom: 67.5%;
+    padding-bottom: 56.34%;
     margin-bottom: 10px;
     position: relative;
     overflow: hidden;
-    padding-bottom: 56.34%;
+    max-width: 1920px;
+    max-height: 1080px;
 }
 
 .grav-youtube iframe {
