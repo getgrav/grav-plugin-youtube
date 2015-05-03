@@ -50,8 +50,7 @@ class YoutubePlugin extends Plugin
     /**
      * Add content after page content was read into the system.
      *
-     * @param  Event  $event An event object, when `onPageContentRaw` is
-     *                       fired.
+     * @param  Event  $event An event object, when `onPageContentRaw` is fired.
      */
     public function onPageContentRaw(Event $event)
     {
@@ -65,7 +64,6 @@ class YoutubePlugin extends Plugin
 
             // build an anonymous function to pass to `parseLinks()`
             $function = function ($matches) {
-
                 $search = $matches[0];
 
                 // double check to make sure we found a valid YouTube video ID
