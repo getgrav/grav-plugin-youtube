@@ -27,14 +27,14 @@ class YoutubePlugin extends Plugin
     public static function getSubscribedEvents()
     {
         return [
-            'onBuildPagesInitialized' => ['onBuildPagesInitialized', 0],
+            'onPluginsInitialized' => ['onPluginsInitialized', 0],
         ];
     }
 
     /**
      * Initialize configuration.
      */
-    public function onBuildPagesInitialized()
+    public function onPluginsInitialized()
     {
         if ($this->isAdmin()) {
             $this->active = false;
