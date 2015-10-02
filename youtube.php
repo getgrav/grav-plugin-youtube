@@ -37,6 +37,9 @@ class YoutubePlugin extends Plugin
     public function onPluginsInitialized()
     {
         if ($this->isAdmin()) {
+            if ($this->config->get('plugins.youtube.add_editor_button')) {
+                $this->grav['assets']->addJs($this->grav['base_url_absolute'] . '/user/plugins/youtube/admin/editor-button/js/button.js');
+            }
             $this->active = false;
             return;
         }
