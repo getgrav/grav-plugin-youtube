@@ -1,5 +1,5 @@
 name: YouTube
-version: 1.0.0
+version: 1.1.0
 description: "**YouTube** is a simple plugin that converts markdown links into responsive embeds."
 icon: youtube
 author:
@@ -28,6 +28,18 @@ form:
     built_in_css:
       type: toggle
       label: Use built in CSS
+      highlight: 1
+      default: 1
+      options:
+        1: Enabled
+        0: Disabled
+      validate:
+        type: bool
+
+    add_editor_button:
+      type: toggle
+      label: Add editor button
+      help: The editor button allows you to easily enter YouTube videos in the page content
       highlight: 1
       default: 1
       options:
