@@ -12,6 +12,7 @@ namespace Grav\Plugin;
 use Grav\Common\Grav;
 use Grav\Common\Plugin;
 use Grav\Common\Page\Page;
+use Grav\Common\Twig\Twig;
 use RocketTheme\Toolbox\Event\Event;
 
 class YoutubePlugin extends Plugin
@@ -46,7 +47,8 @@ class YoutubePlugin extends Plugin
 
         $this->enable([
             'onPageContentRaw' => ['onPageContentRaw', 0],
-            'onTwigSiteVariables' => ['onTwigSiteVariables', 0]
+            'onTwigSiteVariables' => ['onTwigSiteVariables', 0],
+            'onTwigTemplatePaths' => ['onTwigTemplatePaths', 0],
         ]);
     }
 
@@ -59,14 +61,17 @@ class YoutubePlugin extends Plugin
     {
         /** @var Page $page */
         $page = $event['page'];
+        /** @var Twig $twig */
+        $twig = $this->grav['twig'];
         $config = $this->mergeConfig($page);
+
 
         if ($config->get('enabled')) {
             // Get raw content and substitute all formulas by a unique token
             $raw = $page->getRawContent();
 
             // build an anonymous function to pass to `parseLinks()`
-            $function = function ($matches) {
+            $function = function ($matches) use ($twig) {
                 $search = $matches[0];
 
                 // double check to make sure we found a valid YouTube video ID
@@ -75,7 +80,9 @@ class YoutubePlugin extends Plugin
                 }
 
                 // build the replacement embeded HTML string
-                $replace = '<div class="grav-youtube"><iframe src="https://www.youtube.com/embed/' . $matches[1] . '?vq=hd1080" frameborder="0" allowfullscreen></iframe></div>';
+                $replace = $twig->processTemplate('partials/youtube.html.twig', array(
+                  'video_id' => $matches[1],
+                ));
 
                 // do the replacement
                 return str_replace($search, $replace, $search);
@@ -94,5 +101,13 @@ class YoutubePlugin extends Plugin
         if ($this->config->get('plugins.youtube.built_in_css')) {
             $this->grav['assets']->add('plugin://youtube/css/youtube.css');
         }
+    }
+
+    /**
+     * Add current directory to twig lookup paths.
+     */
+    public function onTwigTemplatePaths()
+    {
+        $this->grav['twig']->twig_paths[] = __DIR__ . '/templates';
     }
 }
