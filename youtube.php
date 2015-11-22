@@ -63,8 +63,8 @@ class YoutubePlugin extends Plugin
         $page = $event['page'];
         /** @var Twig $twig */
         $twig = $this->grav['twig'];
-        $config = $this->mergeConfig($page);
-
+        /** @var Data $config */
+        $config = $this->mergeConfig($page, TRUE);
 
         if ($config->get('enabled')) {
             // Get raw content and substitute all formulas by a unique token
