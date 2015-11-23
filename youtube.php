@@ -9,10 +9,11 @@
 
 namespace Grav\Plugin;
 
-use Grav\Common\Grav;
+use Grav\Common\Data\Data;
 use Grav\Common\Plugin;
 use Grav\Common\Page\Page;
 use Grav\Common\Twig\Twig;
+use Grav\Plugin\Youtube\Twig\YoutubeTwigExtension;
 use RocketTheme\Toolbox\Event\Event;
 
 class YoutubePlugin extends Plugin
@@ -47,6 +48,7 @@ class YoutubePlugin extends Plugin
 
         $this->enable([
             'onPageContentRaw' => ['onPageContentRaw', 0],
+            'onTwigExtensions' => ['onTwigExtensions', 0],
             'onTwigSiteVariables' => ['onTwigSiteVariables', 0],
             'onTwigTemplatePaths' => ['onTwigTemplatePaths', 0],
         ]);
@@ -63,15 +65,15 @@ class YoutubePlugin extends Plugin
         $page = $event['page'];
         /** @var Twig $twig */
         $twig = $this->grav['twig'];
-        $config = $this->mergeConfig($page);
-
+        /** @var Data $config */
+        $config = $this->mergeConfig($page, TRUE);
 
         if ($config->get('enabled')) {
             // Get raw content and substitute all formulas by a unique token
             $raw = $page->getRawContent();
 
             // build an anonymous function to pass to `parseLinks()`
-            $function = function ($matches) use ($twig) {
+            $function = function ($matches) use ($twig, $config) {
                 $search = $matches[0];
 
                 // double check to make sure we found a valid YouTube video ID
@@ -79,9 +81,11 @@ class YoutubePlugin extends Plugin
                     return $search;
                 }
 
-                // build the replacement embeded HTML string
+                // build the replacement embed HTML string
                 $replace = $twig->processTemplate('partials/youtube.html.twig', array(
-                  'video_id' => $matches[1],
+                    'player_parameters' => $config->get('player_parameters'),
+                    'privacy_enhanced_mode' => $config->get('privacy_enhanced_mode'),
+                    'video_id' => $matches[1],
                 ));
 
                 // do the replacement
@@ -91,6 +95,15 @@ class YoutubePlugin extends Plugin
             // set the parsed content back into as raw content
             $page->setRawContent($this->parseLinks($raw, $function, $this::YOUTUBE_REGEX));
         }
+    }
+
+    /**
+     * Add Twig Extensions.
+     */
+    public function onTwigExtensions()
+    {
+        require_once __DIR__ . '/classes/twig/YoutubeTwigExtension.php';
+        $this->grav['twig']->twig->addExtension(new YoutubeTwigExtension());
     }
 
     /**

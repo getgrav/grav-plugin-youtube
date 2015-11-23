@@ -27,6 +27,24 @@ You should now have all the plugin files under
 ```
 enabled: true
 built_in_css: true
+player_parameters:
+  autoplay: 0
+  cc_load_policy: 0
+  color: red
+  controls: 1
+  disablekb: 0
+  enablejsapi: 0
+  fs: 1
+  hl: ''
+  iv_load_policy: 1
+  loop: 0
+  modestbranding: 0
+  origin: ''
+  playsinline: 0
+  rel: 1
+  showinfo: 1
+  vq: default
+privacy_enhanced_mode: false
 ```
 
 If you need to change any value, then the best process is to copy the [youtube.yaml](youtube.yaml) file into your `users/config/plugins/` folder (create it if it doesn't exist), and then modify there.  This will override the default settings.
