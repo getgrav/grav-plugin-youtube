@@ -49,6 +49,19 @@ privacy_enhanced_mode: false
 
 If you need to change any value, then the best process is to copy the [youtube.yaml](youtube.yaml) file into your `users/config/plugins/` folder (create it if it doesn't exist), and then modify there.  This will override the default settings.
 
+You can also set any of these settings on a per-page basis by adding them under a `youtube:` setting in your page header.  For example:
+
+    ---
+    title: YouTube Video
+    youtube:
+        player_parameters:
+            autoplay: true
+    ---
+    
+    [plugin:youtube](https://www.youtube.com/watch?v=BK8guP9ov2U)
+
+This will display a video and auto-play it.
+
 # Usage
 
 To use this plugin you simply need to include a youtube URL in markdown link such as:
