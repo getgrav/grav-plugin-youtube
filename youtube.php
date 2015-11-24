@@ -102,7 +102,7 @@ class YoutubePlugin extends Plugin
      */
     public function onTwigExtensions()
     {
-        require_once __DIR__ . '/classes/twig/YoutubeTwigExtension.php';
+        require_once __DIR__ . '/classes/Twig/YoutubeTwigExtension.php';
         $this->grav['twig']->twig->addExtension(new YoutubeTwigExtension());
     }
 
