@@ -1,3 +1,9 @@
+# v2.0.1
+## 11/24/2015
+
+1. [](#bugfix)
+    * Fixed issue with case sensitivity when including new `YoutubeTwigExtension`
+
 # v2.0.0
 ## 11/23/2015
 
