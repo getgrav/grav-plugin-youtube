@@ -1,3 +1,9 @@
+# v2.0.2
+## 04/26/2016
+
+1. [](#bugfix)
+    * Fixed for invalid URL with YouTube editor buttons
+
 # v2.0.1
 ## 11/24/2015
 
