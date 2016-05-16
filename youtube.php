@@ -18,7 +18,7 @@ use RocketTheme\Toolbox\Event\Event;
 
 class YoutubePlugin extends Plugin
 {
-    const YOUTUBE_REGEX = '(?:https?:\/{2}www.youtube(?:-nocookie)?\.com\/(?:[^\/\n\s]+\/\S+\/|(?:v|e(?:mbed)?)\/|\S*?[?&]v=)|youtu\.be\/)([a-zA-Z0-9_-]{11})';
+    const YOUTUBE_REGEX = '(?:https?:\/{2}(?:(?:www.youtube(?:-nocookie)?\.com\/(?:[^\/\n\s]+\/\S+\/|(?:v|e(?:mbed)?)\/|\S*?[?&]v=))|(?:youtu\.be\/)))([a-zA-Z0-9_-]{11})';
 
     /**
      * Return a list of subscribed events.
