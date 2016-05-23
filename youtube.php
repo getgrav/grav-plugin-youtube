@@ -18,7 +18,7 @@ use RocketTheme\Toolbox\Event\Event;
 
 class YoutubePlugin extends Plugin
 {
-    const YOUTUBE_REGEX = '(?:https?:\/{2}www.youtube(?:-nocookie)?\.com\/(?:[^\/\n\s]+\/\S+\/|(?:v|e(?:mbed)?)\/|\S*?[?&]v=)|youtu\.be\/)([a-zA-Z0-9_-]{11})';
+    const YOUTUBE_REGEX = '(?:https?:\/{2}(?:(?:www.youtube(?:-nocookie)?\.com\/(?:[^\/\n\s]+\/\S+\/|(?:v|e(?:mbed)?)\/|\S*?[?&]v=))|(?:youtu\.be\/)))([a-zA-Z0-9_-]{11})';
 
     /**
      * Return a list of subscribed events.
@@ -39,10 +39,9 @@ class YoutubePlugin extends Plugin
     public function onPluginsInitialized()
     {
         if ($this->isAdmin()) {
-            if ($this->config->get('plugins.youtube.add_editor_button')) {
-                $this->grav['assets']->addJs($this->grav['base_url_absolute'] . '/user/plugins/youtube/admin/editor-button/js/button.js');
-            }
-            $this->active = false;
+            $this->enable([
+                'onTwigSiteVariables' => ['onTwigSiteVariables', 0],
+            ]);
             return;
         }
 
@@ -111,8 +110,12 @@ class YoutubePlugin extends Plugin
      */
     public function onTwigSiteVariables()
     {
-        if ($this->config->get('plugins.youtube.built_in_css')) {
+        if (!$this->isAdmin() && $this->config->get('plugins.youtube.built_in_css')) {
             $this->grav['assets']->add('plugin://youtube/css/youtube.css');
+        }
+
+        if ($this->isAdmin() && $this->config->get('plugins.youtube.add_editor_button')) {
+            $this->grav['assets']->add('plugin://youtube/admin/editor-button/js/button.js');
         }
     }
 
