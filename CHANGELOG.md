@@ -1,5 +1,5 @@
-# v2.0.x
-## 12/xx/2016
+# v2.0.3
+## 12/23/2016
 
 1. [](#bugfix)
     * Fixed a JavaScript issue [#16](https://github.com/getgrav/grav-plugin-youtube/pull/16)
