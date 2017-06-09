@@ -41,7 +41,7 @@ class YoutubeTwigExtension extends \Twig_Extension
         $grav = static::getGrav();
 
         // build base video embed URL (while respecting privacy enhanced mode setting)
-        $url = '//www.youtube' . ($privacy_enhanced_mode ? '-nocookie' : '') . '.com/embed/' . $video_id;
+        $url = 'https://www.youtube' . ($privacy_enhanced_mode ? '-nocookie' : '') . '.com/embed/' . $video_id;
 
         // filter player parameters to only those not matching YouTube defaults
         $filtered_player_parameters = array();
