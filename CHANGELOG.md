@@ -1,3 +1,9 @@
+# v2.0.4
+## 09/28/2017
+
+1. [](#improved)
+    * Always use HTTPS for YouTube [#21](https://github.com/getgrav/grav-plugin-youtube/pull/21)
+
 # v2.0.3
 ## 12/23/2016
 
