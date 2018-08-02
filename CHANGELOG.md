@@ -1,5 +1,5 @@
 # v3.0.0
-## mm/dd/2017
+## 08/02/2017
 
 1. [](#new)
     * Added shortcode support
