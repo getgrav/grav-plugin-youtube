@@ -1,6 +1,6 @@
 name: YouTube
-version: 2.0.4
-description: "**YouTube** is a simple plugin that converts markdown links into responsive embeds."
+version: 3.0.0
+description: "**YouTube** is a simple plugin that converts markdown links or shortcodes into responsive embeds."
 icon: youtube
 author:
   name: Team Grav
