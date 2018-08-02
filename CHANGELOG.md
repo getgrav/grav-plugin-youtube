@@ -1,3 +1,9 @@
+# v3.0.0
+## mm/dd/2017
+
+1. [](#new)
+    * Added shortcode support
+
 # v2.0.4
 ## 09/28/2017
 
