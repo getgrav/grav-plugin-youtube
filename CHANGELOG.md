@@ -1,5 +1,11 @@
+# v3.0.1
+## 08/20/2018
+
+1. [](#improved)
+    * Refactor to remove GravTrait
+    
 # v3.0.0
-## 08/02/2017
+## 08/02/2018
 
 1. [](#new)
     * Added shortcode support
