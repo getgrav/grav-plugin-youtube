@@ -18,7 +18,7 @@ use RocketTheme\Toolbox\Event\Event;
 
 class YoutubePlugin extends Plugin
 {
-    const YOUTUBE_REGEX = '(?:https?:\/{2}(?:(?:www.youtube(?:-nocookie)?\.com\/(?:[^\/\n\s]+\/\S+\/|(?:v|e(?:mbed)?)\/|\S*?[?&]v=))|(?:youtu\.be\/)))([a-zA-Z0-9_-]{11})';
+    const YOUTUBE_REGEX = '(?:https?:\/{2}(?:(?:www.youtube(?:-nocookie)?\.com\/(?:[^\/\n\s]+\/\S+\/|(?:v|e(?:mbed)?)\/|\S*?[?&]v=))|(?:youtu\.be\/)))([a-zA-Z0-9_-]{11})(?:\?size=(\d+),(\d+))?';
 
     /**
      * Return a list of subscribed events.
@@ -81,12 +81,21 @@ class YoutubePlugin extends Plugin
                     return $search;
                 }
 
-                // build the replacement embed HTML string
-                $replace = $twig->processTemplate('partials/youtube.html.twig', array(
+                $options = array(
                     'player_parameters' => $config->get('player_parameters'),
                     'privacy_enhanced_mode' => $config->get('privacy_enhanced_mode'),
-                    'video_id' => $matches[1],
-                ));
+                    'video_id' => $matches[1]
+                );
+
+                // check if size was given
+                if (isset($matches[2]) && isset($matches[3])) {
+                    $options['video_size'] = true;
+                    $options['video_height'] = $matches[2];
+                    $options['video_width'] = $matches[3];
+                }
+
+                // build the replacement embed HTML string
+                $replace = $twig->processTemplate('partials/youtube.html.twig', $options);
 
                 // do the replacement
                 return str_replace($search, $replace, $search);
