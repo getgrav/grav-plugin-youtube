@@ -24,6 +24,7 @@ class YoutubeTwigExtension extends \Twig_Extension
     {
         return [
             new \Twig_SimpleFunction('youtube_embed_url', [$this, 'embedUrl']),
+            new \Twig_SimpleFunction('youtube_thumbnail_url', [$this, 'thumbnailUrl']),
         ];
     }
 
@@ -59,6 +60,13 @@ class YoutubeTwigExtension extends \Twig_Extension
         if (!empty($filtered_player_parameters) && ($query_string = http_build_query($filtered_player_parameters))) {
             $url .= '?' . $query_string;
         }
+
+        return $url;
+    }
+
+    public function thumbnailUrl($video_id)
+    {
+        $url = 'https://i.ytimg.com/vi/' . $video_id . '/hqdefault.jpg';
 
         return $url;
     }
