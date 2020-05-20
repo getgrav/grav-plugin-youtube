@@ -1,3 +1,10 @@
+# v3.1.0
+## 05/20/2020
+
+1. [](#new)
+    * Added "Lazy Load" Option [#30](https://github.com/getgrav/grav-plugin-youtube/pull/30)
+    * Added option for video size [#29](https://github.com/getgrav/grav-plugin-youtube/pull/29)
+
 # v3.0.1
 ## 08/20/2018
 
