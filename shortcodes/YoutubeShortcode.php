@@ -28,12 +28,23 @@ class YoutubeShortcode extends Shortcode
                 /** @var Twig $twig */
                 $twig = $this->grav['twig'];
 
-                // build the replacement embed HTML string
-                $replace = $twig->processTemplate('partials/youtube.html.twig', array(
+                $options = array(
                     'player_parameters' => $params,
                     'privacy_enhanced_mode' => $privacy_mode,
                     'video_id' => $matches[1],
-                ));
+                );
+
+                // check if size was given
+                if (isset($params['width']) && isset($params['height'])) {
+                    $options['video_size'] = true;
+                    $options['video_height'] = $params['width'];
+                    $options['video_width'] = $params['height'];
+                    unset($params['width']);
+                    unset($params['height']);
+                }
+                
+                // build the replacement embed HTML string
+                $replace = $twig->processTemplate('partials/youtube.html.twig', $options);
 
                 // do the replacement
                 return str_replace($search, $replace, $search);
