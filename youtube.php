@@ -84,8 +84,13 @@ class YoutubePlugin extends Plugin
                 $options = array(
                     'player_parameters' => $config->get('player_parameters'),
                     'privacy_enhanced_mode' => $config->get('privacy_enhanced_mode'),
+                    'lazy_load' => $config->get('lazy_load'),
                     'video_id' => $matches[1]
                 );
+
+                if($options['lazy_load'] == true) {
+                    $options['player_parameters']['autoplay'] = true;
+                }
 
                 // check if size was given
                 if (isset($matches[2]) && isset($matches[3])) {
@@ -122,6 +127,10 @@ class YoutubePlugin extends Plugin
     {
         if (!$this->isAdmin() && $this->config->get('plugins.youtube.built_in_css')) {
             $this->grav['assets']->add('plugin://youtube/css/youtube.css');
+        }
+
+        if (!$this->isAdmin() && $this->config->get('plugins.youtube.built_in_js')) {
+            $this->grav['assets']->add('plugin://youtube/js/youtube.js');
         }
 
         if ($this->isAdmin() && $this->config->get('plugins.youtube.add_editor_button')) {

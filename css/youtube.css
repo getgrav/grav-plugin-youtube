@@ -16,3 +16,45 @@
     height: 100%;
     position: absolute;
 }
+
+.grav-youtube--lazyloaded {
+    background-repeat: no-repeat;
+    background-position: center;
+    background-size: cover;
+    cursor: pointer;
+}
+
+.grav-youtube--lazyloaded button {
+    position: absolute;
+    left: 50%;
+    top: 50%;
+    width: 68px;
+    height: 48px;
+    margin-left: -34px;
+    margin-top: -24px;
+    border: none;
+    background-color: transparent;
+    padding: 0;
+    outline: 0;
+    cursor: pointer;
+}
+
+.grav-youtube--lazyloaded iframe:not([src]) {
+    display: none;
+}
+
+.grav-youtube--lazyloaded iframe[src] + button {
+    display: none;
+}
+
+.grav-youtube--lazyloaded path:first-of-type {
+    -webkit-transition: fill .1s cubic-bezier(0.0,0.0,0.2,1), fill-opacity .1s cubic-bezier(0.0,0.0,0.2,1);
+    -o-transition: fill .1s cubic-bezier(0.0,0.0,0.2,1), fill-opacity .1s cubic-bezier(0.0,0.0,0.2,1);
+    transition: fill .1s cubic-bezier(0.0,0.0,0.2,1), fill-opacity .1s cubic-bezier(0.0,0.0,0.2,1)
+}
+
+.grav-youtube--lazyloaded:hover path:first-of-type,
+.grav-youtube--lazyloaded button:focus path:first-of-type {
+    fill: #f00;
+    fill-opacity: 1;
+}
