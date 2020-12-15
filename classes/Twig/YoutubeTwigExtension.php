@@ -53,6 +53,11 @@ class YoutubeTwigExtension extends \Twig_Extension
                 continue;
             }
 
+            //YouTube loop fix for HTML5 player
+            if ($key == 'loop' && $value == 1) {
+                $filtered_player_parameters['playlist'] = $video_id;
+            }
+            
             $filtered_player_parameters[$key] = $value;
         }
 
