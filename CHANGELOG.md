@@ -1,3 +1,9 @@
+# v4.0.1
+## mm/dd/2020
+
+1. [](#improved)
+    * Mentioned `shortcode-core` as required for shortcode syntax
+
 # v4.0.0
 ## 12/14/2020
 
