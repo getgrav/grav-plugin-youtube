@@ -26,6 +26,12 @@ window.nextgenEditor.addShortcode('youtube', {
       widget: 'input-text',
       default: '',
     },
+    class: {
+      type: String,
+      title: 'Class',
+      widget: 'input-text',
+      default: '',
+    },
     autoplay: {
       type: Number,
       title: 'Autoplay',

@@ -1,3 +1,6 @@
+{% if class %}
+<div class="{{ class }}">
+{% endif %}
 {% if lazy_load == true %}
 <div class="grav-youtube grav-youtube--lazyloaded" style="background-image: url('{{- youtube_thumbnail_url(video_id) -}}')">
     <iframe data-src="{{- youtube_embed_url(video_id, player_parameters, privacy_enhanced_mode) -}}" frameborder="0" allow="autoplay" allowfullscreen></iframe>
@@ -11,5 +14,8 @@
 {% else %}
 <div class="grav-youtube">
     <iframe src="{{- youtube_embed_url(video_id, player_parameters, privacy_enhanced_mode) -}}" frameborder="0" allowfullscreen></iframe>
+</div>
+{% endif %}
+{% if class %}
 </div>
 {% endif %}
