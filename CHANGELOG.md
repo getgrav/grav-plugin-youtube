@@ -1,8 +1,13 @@
-# v4.0.1
-## mm/dd/2020
+# v4.1.0
+## 06/07/2021
 
 1. [](#improved)
-    * Mentioned `shortcode-core` as required for shortcode syntax
+   * Mentioned `shortcode-core` as required for shortcode syntax
+   * Added new `class` option for shortcode
+   * Added a new `.grav-youtube-wrapper` element for simpler targeting
+1. [](#bugfix)
+   * Fixed padding to remove black bars at top and bottom [#34](https://github.com/getgrav/grav-plugin-youtube/pull/34)
+
 
 # v4.0.0
 ## 12/14/2020
