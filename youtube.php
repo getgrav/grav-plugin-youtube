@@ -30,6 +30,7 @@ class YoutubePlugin extends Plugin
     {
         return [
             'onPluginsInitialized' => ['onPluginsInitialized', 0],
+            'registerNextGenEditorPlugin' => ['registerNextGenEditorPluginShortcodes', 0],
         ];
     }
 
@@ -152,5 +153,15 @@ class YoutubePlugin extends Plugin
     public function onShortcodeHandlers()
     {
         $this->grav['shortcode']->registerAllShortcodes(__DIR__.'/shortcodes');
+    }
+
+    public function registerNextGenEditorPluginShortcodes($event) {
+        $plugins = $event['plugins'];
+
+        // youtube
+        $plugins['js'][] = 'plugin://youtube/nextgen-editor/shortcodes/youtube/youtube.js';
+
+        $event['plugins']  = $plugins;
+        return $event;
     }
 }

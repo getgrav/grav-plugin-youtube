@@ -82,7 +82,9 @@ CSS is also loaded to provide the appropriate responsive layout.
 
 # Shortcode Syntax
 
-As of version `3.0` you can now use an alternative _shortcode_ syntax that supports passing in the player parameter values inline 
+As of version `3.0` you can now use an alternative _shortcode_ syntax that supports passing in the player parameter values inline.
+
+**NOTE: `shortcode-core` plugin is required and must be installed and enabled for Shortcode Syntax to work.**  
 
 ```
 [youtube color=white autoplay=1]https://www.youtube.com/watch?v=BK8guP9ov2U[/youtube]

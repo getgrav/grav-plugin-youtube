@@ -1,3 +1,17 @@
+# v4.0.1
+## mm/dd/2020
+
+1. [](#improved)
+    * Mentioned `shortcode-core` as required for shortcode syntax
+
+# v4.0.0
+## 12/14/2020
+
+1. [](#new)
+    * NextGen Editor shortcode support
+1. [](#improved)
+    * Loop parameter fix for a single video [#36](https://github.com/getgrav/grav-plugin-youtube/pull/36)
+
 # v3.1.0
 ## 05/20/2020
 
