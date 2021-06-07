@@ -32,6 +32,7 @@ class YoutubeShortcode extends Shortcode
                     'player_parameters' => $params,
                     'privacy_enhanced_mode' => $privacy_mode,
                     'video_id' => $matches[1],
+                    'class' => $sc->getParameter('class'),
                 );
 
                 // check if size was given

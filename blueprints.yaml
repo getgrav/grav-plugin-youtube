@@ -1,5 +1,7 @@
 name: YouTube
-version: 3.1.0
+slug: youtube
+type: plugin
+version: 4.1.0
 description: "**YouTube** is a simple plugin that converts markdown links or shortcodes into responsive embeds."
 icon: youtube
 author:
