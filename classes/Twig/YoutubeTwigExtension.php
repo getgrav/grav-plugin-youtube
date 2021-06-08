@@ -36,12 +36,17 @@ class YoutubeTwigExtension extends \Twig_Extension
      * @param  bool    $privacy_enhanced_mode
      * @return string
      */
-    public function embedUrl($video_id, array $player_parameters = array(), $privacy_enhanced_mode = FALSE)
+    public function embedUrl($video_id, array $player_parameters = array(), $privacy_enhanced_mode = FALSE, $lazy_load = FALSE)
     {
         $grav = Grav::instance();
 
         // build base video embed URL (while respecting privacy enhanced mode setting)
         $url = 'https://www.youtube' . ($privacy_enhanced_mode ? '-nocookie' : '') . '.com/embed/' . $video_id;
+
+        // Set the video to autoplay if lazy_load is enabled
+        if($lazy_load == true) {
+            $player_parameters['autoplay'] = true;
+        }
 
         // filter player parameters to only those not matching YouTube defaults
         $filtered_player_parameters = array();
