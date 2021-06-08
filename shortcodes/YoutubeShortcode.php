@@ -11,10 +11,12 @@ class YoutubeShortcode extends Shortcode
     {
         $this->shortcode->getHandlers()->add('youtube', function(ShortcodeInterface $sc) {
 
+            // Get Plugin configuration
+            $pluginConfig = $this->config->get('plugins.youtube');
+
             // Get shortcode content and parameters
             $url = $sc->getContent();
             $params = $sc->getParameters();
-            $privacy_mode = $sc->getParameter('privacy_enhanced_mode');
 
             if ($url) {
                 preg_match($this::YOUTUBE_REGEX, $url, $matches);
@@ -29,10 +31,11 @@ class YoutubeShortcode extends Shortcode
                 $twig = $this->grav['twig'];
 
                 $options = array(
-                    'player_parameters' => $params,
-                    'privacy_enhanced_mode' => $privacy_mode,
+                    'player_parameters' => array_merge($pluginConfig['player_parameters'],$params),
+                    'privacy_enhanced_mode' => $sc->getParameter('privacy_enhanced_mode',$pluginConfig['privacy_enhanced_mode']),
                     'video_id' => $matches[1],
                     'class' => $sc->getParameter('class'),
+                    'lazy_load' => $sc->getParameter('lazy_load',$pluginConfig['lazy_load']),
                 );
 
                 // check if size was given
