@@ -1,6 +1,7 @@
 <div class="grav-youtube-wrapper {{ class }}">
 {% if lazy_load == true %}
-  <div class="grav-youtube grav-youtube--lazyloaded" style="background-image: url('{{- youtube_thumbnail_url(video_id) -}}')">
+  <div class="grav-youtube grav-youtube--lazyloaded">
+      <img src="{{- youtube_thumbnail_url(video_id) -}}" loading="lazy"/>
       <iframe data-src="{{- youtube_embed_url(video_id, player_parameters, privacy_enhanced_mode, lazy_load) -}}" frameborder="0" allow="autoplay" allowfullscreen></iframe>
       <button>
           <svg viewBox="0 0 68 48">
