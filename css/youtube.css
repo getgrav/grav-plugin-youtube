@@ -16,11 +16,13 @@
     position: absolute;
 }
 
-.grav-youtube--lazyloaded {
-    background-repeat: no-repeat;
-    background-position: center;
-    background-size: cover;
-    cursor: pointer;
+.grav-youtube--lazyloaded img {
+    object-fit: cover;
+    height: 100%;
+    width: 100%;
+    position: absolute;
+    top: 0;
+    left: 0;
 }
 
 .grav-youtube--lazyloaded button {
