@@ -42,7 +42,6 @@ player_parameters:
   origin: ''
   playsinline: 0
   rel: 1
-  showinfo: 1
   vq: default
 privacy_enhanced_mode: false
 ```
