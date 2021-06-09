@@ -35,7 +35,7 @@ class YoutubeShortcode extends Shortcode
 
                     if (isset($page_media[$custom_thumbnail])) {
                         // Get the url of the thumbnail.
-                        // No resizing takes (the best size is not known) place so there is a potential performance problem here if the user specifies a very large image!
+                        // No resizing takes place (the most appropriate size is not known) so there is a potential performance problem here if the user specifies a very large image!
                         $custom_thumbnail_url = $page_media[$custom_thumbnail]->url();
                     }
                 }
