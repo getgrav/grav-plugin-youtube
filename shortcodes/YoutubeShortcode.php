@@ -27,6 +27,18 @@ class YoutubeShortcode extends Shortcode
                     return $search;
                 }
 
+
+                // If there is a custom thumbnail, get the url
+                $custom_thumbnail_url ='';                
+                if($custom_thumbnail = $sc->getParameter('thumbnail')) {
+                    $page_media = $this->grav['page']->media();
+
+                    if (isset($page_media[$custom_thumbnail])) {
+                        $custom_thumbnail_url = $page_media[$custom_thumbnail]->url();
+                    }
+                }
+
+
                 /** @var Twig $twig */
                 $twig = $this->grav['twig'];
 
@@ -36,6 +48,7 @@ class YoutubeShortcode extends Shortcode
                     'video_id' => $matches[1],
                     'class' => $sc->getParameter('class'),
                     'lazy_load' => $sc->getParameter('lazy_load',$pluginConfig['lazy_load']),
+                    'thumbnail' => $custom_thumbnail_url,
                 );
 
                 // check if size was given
