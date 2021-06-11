@@ -89,4 +89,11 @@ As of version `3.0` you can now use an alternative _shortcode_ syntax that suppo
 [youtube color=white autoplay=1]https://www.youtube.com/watch?v=BK8guP9ov2U[/youtube]
 ```
 
+Using the shortcode syntax it is also possible to set a custom thumbnail picture when using lazy_load. 
+
+```
+[youtube lazy_load=true thumbnail="name of media.jpg"]https://www.youtube.com/watch?v=BK8guP9ov2U[/youtube]
+```
+
+
 [grav]: http://github.com/getgrav/grav
