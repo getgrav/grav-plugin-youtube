@@ -18,7 +18,7 @@ use RocketTheme\Toolbox\Event\Event;
 
 class YoutubePlugin extends Plugin
 {
-    const YOUTUBE_REGEX = '(?:https?:\/{2}(?:(?:www.youtube(?:-nocookie)?\.com\/(?:[^\/\n\s]+\/\S+\/|(?:v|e(?:mbed)?)\/|\S*?[?&]v=))|(?:youtu\.be\/)))([a-zA-Z0-9_-]{11})(?:\?size=(\d+),(\d+))?';
+    const YOUTUBE_REGEX = 'https?:\/\/(?:(?:www\.)?youtube(?:-nocookie)?\.com\/(?:watch\?v=|playlist|embed\/(?:videoseries)?)|youtu\.be\/)([A-Za-z0-9_-]{11})?(?:[?&](.*))?';
 
     /**
      * Return a list of subscribed events.
@@ -77,24 +77,43 @@ class YoutubePlugin extends Plugin
             $function = function ($matches) use ($twig, $config) {
                 $search = $matches[0];
 
-                // double check to make sure we found a valid YouTube video ID
-                if (!isset($matches[1])) {
-                    return $search;
-                }
-
                 $options = array(
                     'player_parameters' => $config->get('player_parameters'),
                     'privacy_enhanced_mode' => $config->get('privacy_enhanced_mode'),
                     'lazy_load' => $config->get('lazy_load'),
-                    'video_id' => $matches[1]
                 );
 
-                
-                // check if size was given
-                if (isset($matches[2]) && isset($matches[3])) {
-                    $options['video_size'] = true;
-                    $options['video_height'] = $matches[2];
-                    $options['video_width'] = $matches[3];
+                if (isset($matches[1])) {
+                    $options['video_id'] = $matches[1];
+                }
+
+                if (isset($matches[2])) {
+                    parse_str($matches[2], $querystring);
+
+                    if (isset($querystring['list'])) {
+                        $options['player_parameters']['list'] = $querystring['list'];
+                    }
+
+                    if (isset($querystring['t'])) {
+                        $options['player_parameters']['start'] = $querystring['t'];
+                    }
+
+                    if (isset($querystring['start'])) {
+                        $options['player_parameters']['start'] = $querystring['start'];
+                    }
+
+                    if (isset($querystring['size'])) {
+                        $parts = explode(',', $querystring['size']);
+                        if (count($parts) === 2) {
+                            $options['video_size'] = true;
+                            $options['video_height'] = $parts[0];
+                            $options['video_width'] = $parts[1];
+                        }
+                    }
+                }
+
+                if (!isset($options['video_id']) && !isset($options['player_parameters']['list'])) {
+                    return $search;
                 }
 
                 // build the replacement embed HTML string
