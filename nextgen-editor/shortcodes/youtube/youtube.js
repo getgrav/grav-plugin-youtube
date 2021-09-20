@@ -209,6 +209,12 @@ window.nextgenEditor.addShortcode('youtube', {
       widget: 'input-text',
       default: '',
     },
+    thumbnail: {
+      type: String,
+      title: 'Thumbnail',
+      widget: 'input-text',
+      default: '',
+    },
   },
   titlebar({ attributes }) {
     let id = '';
