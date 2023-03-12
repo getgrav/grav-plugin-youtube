@@ -18,5 +18,5 @@ player_parameters:
   playsinline: 0
   rel: 1
   vq: default
-privacy_enhanced_mode: false
+privacy_enhanced_mode: true
 lazy_load: false
