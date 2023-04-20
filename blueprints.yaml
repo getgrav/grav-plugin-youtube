@@ -1,7 +1,7 @@
 name: YouTube
 slug: youtube
 type: plugin
-version: 4.1.0
+version: 4.2.0
 description: "**YouTube** is a simple plugin that converts markdown links or shortcodes into responsive embeds."
 icon: youtube
 author:
@@ -72,7 +72,7 @@ form:
         0: Disabled
       validate:
         type: bool
-    
+
     lazy_load:
       type: toggle
       label: Lazy load iframes
@@ -126,18 +126,6 @@ form:
           help: If enabled, the player will play the initial video again and again.
           highlight: 0
           default: 0
-          options:
-            1: Enabled
-            0: Disabled
-          validate:
-            type: int
-
-        player_parameters.showinfo:
-          type: toggle
-          label: Show information
-          help: If enabled, the player will display information like the video title and uploader before the video starts playing.
-          highlight: 1
-          default: 1
           options:
             1: Enabled
             0: Disabled

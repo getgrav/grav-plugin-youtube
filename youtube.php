@@ -89,10 +89,7 @@ class YoutubePlugin extends Plugin
                     'video_id' => $matches[1]
                 );
 
-                if($options['lazy_load'] == true) {
-                    $options['player_parameters']['autoplay'] = true;
-                }
-
+                
                 // check if size was given
                 if (isset($matches[2]) && isset($matches[3])) {
                     $options['video_size'] = true;
