@@ -1,3 +1,11 @@
+# v4.2.0
+## 04/20/2023
+
+1. [](#improved)
+   * Shortcode ingoring plugin fix [#37](https://github.com/getgrav/grav-plugin-youtube/pull/37)
+   * Lazy load the thumbnail image [#47](https://github.com/getgrav/grav-plugin-youtube/pull/47)
+   * Create shortcode option for custom thumbnail [#44](https://github.com/getgrav/grav-plugin-youtube/pull/44)
+
 # v4.1.0
 ## 06/07/2021
 
@@ -29,7 +37,7 @@
 
 1. [](#improved)
     * Refactor to remove GravTrait
-    
+
 # v3.0.0
 ## 08/02/2018
 
