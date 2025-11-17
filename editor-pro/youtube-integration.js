@@ -169,36 +169,60 @@
             this.editorPro.showShortcodeEditForm = (shortcode, block, blockId, onUpdateCallback, ...rest) => {
                 const name = (shortcode?.name || shortcode?.shortcodeName || '').toLowerCase();
                 if (name === 'youtube') {
-                    console.log('[YouTube] Edit form triggered with:', { shortcode, block, blockId, onUpdateCallback, rest, allArgs: arguments });
+                    // Try to find the actual placeholder ID from the DOM or preservedBlocks
+                    let actualBlockId = blockId;
+                    if (!actualBlockId) {
+                        // Search preservedBlocks for this block
+                        for (const [bid, blk] of this.editorPro.preservedBlocks.entries()) {
+                            // Try exact object match first
+                            if (blk === block) {
+                                actualBlockId = bid;
+                                break;
+                            }
+                            // Try matching by YouTube shortcode properties
+                            if (blk.tagName === 'youtube' &&
+                                blk.type === 'shortcode' &&
+                                block.tagName === 'youtube') {
+                                // Match by attributes if they exist
+                                if (block.attributes && blk.attributes) {
+                                    if (JSON.stringify(blk.attributes) === JSON.stringify(block.attributes)) {
+                                        actualBlockId = bid;
+                                        break;
+                                    }
+                                } else {
+                                    // If no attributes, just take the first YouTube shortcode
+                                    actualBlockId = bid;
+                                    break;
+                                }
+                            }
+                        }
+                    }
 
                     // Ensure block.content is populated before trying to extract URL
                     if (block && !block.content && typeof block.original === 'string') {
                         const match = block.original.match(/\[youtube[^\]]*\]([\s\S]*?)\[\/youtube\]/i);
                         if (match && match[1]) {
                             block.content = this.stripHtml(match[1]).trim();
-                            console.log('[YouTube] Populated block.content from block.original:', block.content);
                         }
                     }
 
                     // Also try to get from blockContent if available
                     if (block && !block.content && block.blockContent) {
                         block.content = block.blockContent;
-                        console.log('[YouTube] Populated block.content from block.blockContent:', block.content);
                     }
 
-                    let initialUrl = this.extractUrl(block) || this.extractUrlFromDom(blockId);
+                    let initialUrl = this.extractUrl(block) || this.extractUrlFromDom(actualBlockId);
 
                     // Last resort: try to extract from the editor's textarea content
                     if (!initialUrl && this.editorPro.textarea) {
                         initialUrl = this.extractUrlFromTextarea(block);
                     }
 
-                    console.log('[YouTube] Extracted URL:', initialUrl);
                     this.showModal({
                         mode: 'edit',
                         shortcode,
                         block,
-                        blockId,
+                        blockId: actualBlockId || blockId,  // Use the found blockId if available
                         onUpdateCallback,
                         initialAttributes: { ...(block?.attributes || {}) },
                         initialUrl
@@ -339,18 +363,12 @@
 
         extractUrlFromTextarea(block) {
             if (!this.editorPro.textarea) {
-                console.log('[YouTube] extractUrlFromTextarea: no textarea found');
                 return '';
             }
 
             const textareaContent = this.editorPro.textarea.value;
-            console.log('[YouTube] extractUrlFromTextarea: searching in textarea content');
-
-            // Try to find all youtube shortcodes in the textarea
             const regex = /\[youtube([^\]]*)\]([\s\S]*?)\[\/youtube\]/gi;
             const matches = [...textareaContent.matchAll(regex)];
-
-            console.log('[YouTube] extractUrlFromTextarea: found', matches.length, 'youtube shortcodes');
 
             if (matches.length === 0) {
                 return '';
@@ -358,16 +376,13 @@
 
             // If we only have one match, use it
             if (matches.length === 1) {
-                const url = this.stripHtml(matches[0][2]).trim();
-                console.log('[YouTube] extractUrlFromTextarea: single match found:', url);
-                return url;
+                return this.stripHtml(matches[0][2]).trim();
             }
 
             // If we have multiple matches, try to match by attributes
             if (block && block.attributes) {
                 for (const match of matches) {
                     const attrs = match[1];
-                    // Simple heuristic: if any attribute matches, assume this is our shortcode
                     let isMatch = true;
                     for (const [key, value] of Object.entries(block.attributes)) {
                         if (value && !attrs.includes(value)) {
@@ -376,26 +391,19 @@
                         }
                     }
                     if (isMatch) {
-                        const url = this.stripHtml(match[2]).trim();
-                        console.log('[YouTube] extractUrlFromTextarea: matched by attributes:', url);
-                        return url;
+                        return this.stripHtml(match[2]).trim();
                     }
                 }
             }
 
             // Fallback: return the first match
-            const url = this.stripHtml(matches[0][2]).trim();
-            console.log('[YouTube] extractUrlFromTextarea: using first match:', url);
-            return url;
+            return this.stripHtml(matches[0][2]).trim();
         },
 
         extractUrlFromDom(blockId) {
             if (!blockId) {
-                console.log('[YouTube] extractUrlFromDom: no blockId provided');
                 return '';
             }
-
-            console.log('[YouTube] extractUrlFromDom: looking for blockId:', blockId);
 
             // Try multiple selectors to find the block
             let preservedBlock = document.querySelector(`[data-preserved-block="true"][data-block-id="${blockId}"]`);
@@ -407,11 +415,8 @@
             }
 
             if (!preservedBlock) {
-                console.log('[YouTube] extractUrlFromDom: block not found in DOM');
                 return '';
             }
-
-            console.log('[YouTube] extractUrlFromDom: found block element');
 
             // Try to get data from data-block-data attribute
             const contentNode = preservedBlock.querySelector('.preserved-block-content') || preservedBlock;
@@ -419,17 +424,14 @@
             if (blockDataAttr) {
                 try {
                     const blockData = JSON.parse(blockDataAttr);
-                    console.log('[YouTube] extractUrlFromDom: parsed block data:', blockData);
                     if (blockData.content) {
-                        console.log('[YouTube] extractUrlFromDom: extracted from data-block-data.content:', blockData.content);
                         return blockData.content.trim();
                     }
                     if (blockData.blockContent) {
-                        console.log('[YouTube] extractUrlFromDom: extracted from data-block-data.blockContent:', blockData.blockContent);
                         return blockData.blockContent.trim();
                     }
                 } catch (e) {
-                    console.log('[YouTube] extractUrlFromDom: failed to parse data-block-data:', e);
+                    // Ignore parse errors
                 }
             }
 
@@ -437,15 +439,11 @@
             const placeholderNode = contentNode.querySelector('[data-placeholder-id]') || contentNode;
             const link = placeholderNode.querySelector('a[href]');
             if (link && link.getAttribute('href')) {
-                const href = link.getAttribute('href').trim();
-                console.log('[YouTube] extractUrlFromDom: extracted from <a> href:', href);
-                return href;
+                return link.getAttribute('href').trim();
             }
 
             // Fallback to text content
-            const text = placeholderNode.textContent?.trim();
-            console.log('[YouTube] extractUrlFromDom: extracted from textContent:', text);
-            return text || '';
+            return placeholderNode.textContent?.trim() || '';
         },
 
         renderField(field, value) {
@@ -542,15 +540,6 @@
             const params = this.editorPro.buildParamsString(attributes);
             const placeholderId = `youtube_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
 
-            console.log('[YouTube] handleInsert:', {
-                urlValue,
-                attributes,
-                shortcode,
-                shortcodeText,
-                params,
-                placeholderId
-            });
-
             // Create block data with content
             const blockData = {
                 type: 'shortcode',
@@ -588,7 +577,15 @@
 
         handleUpdate(modalElement, context) {
             const form = modalElement.querySelector('.youtube-shortcode-form');
+            if (!form) {
+                return;
+            }
+
             const urlField = form.querySelector('[data-youtube-field="url"]');
+            if (!urlField) {
+                return;
+            }
+
             const urlValue = urlField.value.trim();
 
             if (!urlValue || !this.isValidUrl(urlValue)) {
@@ -601,17 +598,61 @@
             const shortcodeText = this.editorPro.buildShortcodeString(config, attributes, urlValue);
             const params = this.editorPro.buildParamsString(attributes);
 
-            if (typeof context.onUpdateCallback === 'function') {
-                context.onUpdateCallback({
-                    tagName: config.name,
-                    params,
-                    attributes,
-                    content: urlValue,
-                    type: 'shortcode',
-                    shortcodeConfig: config
-                });
-                return;
+            // For YouTube shortcodes, we need special handling because the URL is content, not an attribute
+
+            // Step 1: Update the preserved block
+            if (context.block) {
+                context.block.attributes = attributes;
+                context.block.content = urlValue;
+                context.block.blockContent = urlValue;
+                context.block.original = shortcodeText;
+                context.block.params = params;
+
+                if (context.blockId) {
+                    this.editorPro.preservedBlocks.set(context.blockId, context.block);
+                }
             }
+
+            // Step 2: Directly update the markdown in the textarea
+            if (this.editorPro.textarea && context.initialAttributes) {
+                let markdown = this.editorPro.textarea.value;
+
+                // Build the old shortcode pattern to find and replace
+                const oldParams = this.editorPro.buildParamsString(context.initialAttributes);
+                const oldShortcodePattern = new RegExp(
+                    `\\[youtube${oldParams.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\]([\\s\\S]*?)\\[/youtube\\]`,
+                    'i'
+                );
+
+                const newMarkdown = markdown.replace(oldShortcodePattern, shortcodeText);
+
+                if (newMarkdown !== markdown) {
+                    this.editorPro.textarea.value = newMarkdown;
+
+                    // Trigger the textarea change event to notify EditorPro
+                    const event = new Event('input', { bubbles: true });
+                    this.editorPro.textarea.dispatchEvent(event);
+
+                    // Step 3: Reload editor from the updated textarea
+                    setTimeout(() => {
+
+                        if (this.editorPro.updateEditorFromTextarea) {
+                            this.editorPro.updateEditorFromTextarea();
+                        } else if (this.editorPro.syncEditorWithTextarea) {
+                            this.editorPro.syncEditorWithTextarea();
+                        } else if (this.editorPro.loadMarkdown) {
+                            this.editorPro.loadMarkdown(newMarkdown);
+                        } else if (this.editorPro.markdownToHtml && this.editorPro.editor) {
+                            const html = this.editorPro.markdownToHtml(newMarkdown);
+                            this.editorPro.editor.commands.setContent(html, false);
+                        } else {
+                        }
+                    }, 100);
+                } else {
+                }
+            }
+
+            return;
 
             const blockId = context.blockId;
             const block = context.block;
@@ -621,6 +662,7 @@
 
             block.attributes = attributes;
             block.content = urlValue;
+            block.blockContent = urlValue;
             block.original = shortcodeText;
             block.params = params;
             block.shortcodeConfig = config;
@@ -639,10 +681,19 @@
         },
 
         updateBlockDom(blockId, block, config) {
-            const element = document.querySelector(`[data-block-id="${blockId}"]`);
+            let element = document.querySelector(`[data-block-id="${blockId}"]`);
+            if (!element) {
+                // Try alternative selectors
+                element = document.querySelector(`[data-placeholder-id="${blockId}"]`);
+            }
+            if (!element) {
+                element = document.querySelector(`[data-preserved-block="true"][data-block-id="${blockId}"]`);
+            }
+
             if (!element) {
                 return;
             }
+
 
             if (block) {
                 if (!block.content && typeof block.original === 'string') {
@@ -672,6 +723,7 @@
             if (contentDom) {
                 contentDom.textContent = block.content || '';
                 contentDom.setAttribute('data-block-data', JSON.stringify(block));
+            } else {
             }
         },
 
@@ -682,8 +734,40 @@
             }
 
             const { state, view } = editor;
+            let foundNode = false;
             state.doc.descendants((node, pos) => {
+                // Check for shortcodeBlock nodes with matching placeholderId OR matching YouTube shortcode
+                if (node.type.name === 'shortcodeBlock') {
+                    // Match by placeholderId if it exists and matches
+                    if (node.attrs.placeholderId === blockId) {
+                        foundNode = true;
+                        const tr = state.tr;
+                        tr.setNodeMarkup(pos, null, {
+                            ...node.attrs,
+                            placeholderId: blockId
+                        });
+                        view.dispatch(tr);
+                        return false;
+                    }
+
+                    // Match by YouTube shortcode with same params (for nodes with null placeholderId)
+                    if (node.attrs.shortcodeName === 'youtube' &&
+                        node.attrs.params === block.params &&
+                        JSON.stringify(node.attrs.attributes) === JSON.stringify(block.attributes)) {
+                        foundNode = true;
+                        const tr = state.tr;
+                        tr.setNodeMarkup(pos, null, {
+                            ...node.attrs,
+                            placeholderId: blockId
+                        });
+                        view.dispatch(tr);
+                        return false;
+                    }
+                }
+
+                // Also check for old preservedBlock nodes
                 if (node.type.name === 'preservedBlock' && node.attrs.blockId === blockId) {
+                    foundNode = true;
                     const tr = state.tr;
                     tr.setNodeMarkup(pos, null, {
                         blockId,
@@ -696,6 +780,8 @@
                 }
                 return undefined;
             });
+            if (!foundNode) {
+            }
         },
 
         getShortcodeConfig() {
@@ -743,18 +829,8 @@
 
         extractUrl(block) {
             if (!block) {
-                console.log('[YouTube] extractUrl: no block provided');
                 return '';
             }
-
-            console.log('[YouTube] extractUrl: block data:', {
-                content: block.content,
-                original: block.original,
-                blockContent: block.blockContent,
-                tagName: block.tagName,
-                allKeys: Object.keys(block),
-                fullBlock: block
-            });
 
             const extractFromHtml = (source) => {
                 if (!source || typeof source !== 'string') {
@@ -765,25 +841,19 @@
 
                 let match = normalized.match(/<a[^>]*href="([^"]+)"[^>]*>(?:[^<]*)<\/a>/i);
                 if (match && match[1]) {
-                    console.log('[YouTube] Extracted URL from <a> tag:', match[1]);
                     return match[1].trim();
                 }
 
                 match = normalized.match(/<p[^>]*>([\s\S]*?)<\/p>/i);
                 if (match && match[1]) {
-                    const stripped = this.stripHtml(match[1]).trim();
-                    console.log('[YouTube] Extracted URL from <p> tag:', stripped);
-                    return stripped;
+                    return this.stripHtml(match[1]).trim();
                 }
 
-                const stripped = this.stripHtml(normalized).trim();
-                console.log('[YouTube] Extracted URL by stripping HTML:', stripped);
-                return stripped;
+                return this.stripHtml(normalized).trim();
             };
 
             // Try block.content first
             if (block.content && typeof block.content === 'string') {
-                console.log('[YouTube] Trying block.content:', block.content);
                 const fromContent = extractFromHtml(block.content);
                 if (fromContent) {
                     return fromContent;
@@ -792,7 +862,6 @@
 
             // Try block.blockContent (used by TipTap)
             if (block.blockContent && typeof block.blockContent === 'string') {
-                console.log('[YouTube] Trying block.blockContent:', block.blockContent);
                 const fromBlockContent = extractFromHtml(block.blockContent);
                 if (fromBlockContent) {
                     return fromBlockContent;
@@ -801,10 +870,8 @@
 
             // Try block.original (the full shortcode string)
             if (block.original && typeof block.original === 'string') {
-                console.log('[YouTube] Trying block.original:', block.original);
                 const shortcodeMatch = block.original.match(/\[youtube[^\]]*\]([\s\S]*?)\[\/youtube\]/i);
                 if (shortcodeMatch && shortcodeMatch[1]) {
-                    console.log('[YouTube] Matched shortcode content:', shortcodeMatch[1]);
                     const extracted = extractFromHtml(shortcodeMatch[1]);
                     if (extracted) {
                         return extracted;
@@ -812,7 +879,6 @@
                 }
             }
 
-            console.log('[YouTube] Failed to extract URL from block');
             return '';
         },
 
@@ -833,7 +899,6 @@
             // Handle markdown links: [text](url) -> url
             const mdLinkMatch = cleaned.match(/^\[([^\]]+)\]\(([^)]+)\)$/);
             if (mdLinkMatch && mdLinkMatch[2]) {
-                console.log('[YouTube] stripHtml: extracted URL from markdown link:', mdLinkMatch[2]);
                 return mdLinkMatch[2].trim();
             }
 
