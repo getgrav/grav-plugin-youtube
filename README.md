@@ -95,5 +95,9 @@ Using the shortcode syntax it is also possible to set a custom thumbnail picture
 [youtube lazy_load=true thumbnail="name of media.jpg"]https://www.youtube.com/watch?v=BK8guP9ov2U[/youtube]
 ```
 
+# Editor Pro Integration
+
+When the [Editor Pro](https://github.com/trilbymedia/grav-plugin-editor-pro) plugin is installed, YouTube automatically registers a toolbar button and shortcode configuration for it. The modal prompts for the video URL (stored as the shortcode content) and exposes all shortcode attributes through friendly form fields so the generated markdown remains in the `[youtube]https://...[/youtube]` format. No extra configuration is required beyond enabling both plugins.
+
 
 [grav]: http://github.com/getgrav/grav

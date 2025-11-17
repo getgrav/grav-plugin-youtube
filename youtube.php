@@ -31,6 +31,8 @@ class YoutubePlugin extends Plugin
         return [
             'onPluginsInitialized' => ['onPluginsInitialized', 0],
             'registerNextGenEditorPlugin' => ['registerNextGenEditorPluginShortcodes', 0],
+            'registerEditorProPlugin' => ['registerEditorProPlugin', 0],
+            'onEditorProShortcodeRegister' => ['onEditorProShortcodeRegister', 0],
         ];
     }
 
@@ -160,5 +162,65 @@ class YoutubePlugin extends Plugin
 
         $event['plugins']  = $plugins;
         return $event;
+    }
+
+    public function registerEditorProPlugin(Event $event)
+    {
+        $plugins = $event['plugins'];
+        $plugins['js'][] = 'plugin://youtube/editor-pro/youtube-integration.js';
+        $event['plugins'] = $plugins;
+
+        return $event;
+    }
+
+    public function onEditorProShortcodeRegister(Event $event)
+    {
+        $shortcodes = $event['shortcodes'];
+        $youtubeIcon = '<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="icon icon-tabler icons-tabler-outline icon-tabler-brand-youtube"><path stroke="none" d="M0 0h24v24H0z" fill="none"/><path d="M2 8a4 4 0 0 1 4 -4h12a4 4 0 0 1 4 4v8a4 4 0 0 1 -4 4h-12a4 4 0 0 1 -4 -4v-8z" /><path d="M10 9l5 3l-5 3z" /></svg>';
+
+        $shortcodes[] = [
+            'name' => 'youtube',
+            'title' => 'YouTube Video',
+            'description' => 'Embed a YouTube video via shortcode.',
+            'type' => 'block',
+            'plugin' => 'youtube',
+            'category' => 'media',
+            'group' => 'YouTube',
+            'icon' => $youtubeIcon,
+            'hasContent' => true,
+            'attributes' => [
+                'width' => ['type' => 'text', 'default' => '', 'title' => 'Width (px)'],
+                'height' => ['type' => 'text', 'default' => '', 'title' => 'Height (px)'],
+                'class' => ['type' => 'text', 'default' => '', 'title' => 'CSS Class'],
+                'thumbnail' => ['type' => 'text', 'default' => '', 'title' => 'Custom Thumbnail'],
+                'privacy_enhanced_mode' => ['type' => 'text', 'default' => '', 'title' => 'Privacy Enhanced Mode'],
+                'lazy_load' => ['type' => 'text', 'default' => '', 'title' => 'Lazy Load'],
+                'autoplay' => ['type' => 'text', 'default' => '', 'title' => 'Autoplay'],
+                'cc_load_policy' => ['type' => 'text', 'default' => '', 'title' => 'Show Captions'],
+                'cc_lang_pref' => ['type' => 'text', 'default' => '', 'title' => 'Captions Language'],
+                'color' => ['type' => 'text', 'default' => '', 'title' => 'Player Color'],
+                'controls' => ['type' => 'text', 'default' => '', 'title' => 'Controls'],
+                'disablekb' => ['type' => 'text', 'default' => '', 'title' => 'Disable Keyboard'],
+                'enablejsapi' => ['type' => 'text', 'default' => '', 'title' => 'Enable JS API'],
+                'end' => ['type' => 'number', 'default' => '', 'title' => 'End Time (sec)'],
+                'fs' => ['type' => 'text', 'default' => '', 'title' => 'Fullscreen Button'],
+                'hl' => ['type' => 'text', 'default' => '', 'title' => 'Interface Language'],
+                'iv_load_policy' => ['type' => 'text', 'default' => '', 'title' => 'Show Annotations'],
+                'list' => ['type' => 'text', 'default' => '', 'title' => 'List Name'],
+                'listType' => ['type' => 'text', 'default' => '', 'title' => 'List Type'],
+                'loop' => ['type' => 'text', 'default' => '', 'title' => 'Loop'],
+                'modestbranding' => ['type' => 'text', 'default' => '', 'title' => 'Minimal Branding'],
+                'origin' => ['type' => 'text', 'default' => '', 'title' => 'Origin'],
+                'playlist' => ['type' => 'text', 'default' => '', 'title' => 'Playlist'],
+                'playsinline' => ['type' => 'text', 'default' => '', 'title' => 'Plays Inline'],
+                'rel' => ['type' => 'text', 'default' => '', 'title' => 'Show Related Videos'],
+                'start' => ['type' => 'number', 'default' => '', 'title' => 'Start Time (sec)'],
+                'widget_referrer' => ['type' => 'text', 'default' => '', 'title' => 'Widget Referrer'],
+                'vq' => ['type' => 'text', 'default' => '', 'title' => 'Quality'],
+            ],
+            'titleBarAttributes' => ['class', 'width', 'height']
+        ];
+
+        $event['shortcodes'] = $shortcodes;
     }
 }
