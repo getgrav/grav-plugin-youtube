@@ -1,3 +1,9 @@
+# v4.3.0
+## 11/17/2025
+
+1. [](#new)
+    * Added Editor Pro support Shortcode format
+
 # v4.2.0
 ## 04/20/2023
 
