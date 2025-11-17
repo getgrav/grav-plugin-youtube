@@ -539,7 +539,50 @@
             const attributes = this.removeEmpty(this.collectAttributes(form));
             const shortcode = this.getShortcodeConfig();
             const shortcodeText = this.editorPro.buildShortcodeString(shortcode, attributes, urlValue);
-            this.editorPro.insertShortcode(shortcode, shortcodeText, attributes, urlValue);
+            const params = this.editorPro.buildParamsString(attributes);
+            const placeholderId = `youtube_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+
+            console.log('[YouTube] handleInsert:', {
+                urlValue,
+                attributes,
+                shortcode,
+                shortcodeText,
+                params,
+                placeholderId
+            });
+
+            // Create block data with content
+            const blockData = {
+                type: 'shortcode',
+                tagName: shortcode.name,
+                shortcodeName: shortcode.name,
+                shortcodeType: 'block',
+                params: params,
+                attributes: attributes,
+                content: urlValue,
+                original: shortcodeText,
+                isClosing: true,
+                isBlock: true,
+                shortcodeConfig: shortcode
+            };
+
+            // Store in preserved blocks BEFORE insertion
+            this.editorPro.preservedBlocks.set(placeholderId, blockData);
+
+            // Use the TipTap command directly to ensure content is preserved
+            if (this.editorPro.editor?.commands?.insertShortcodeBlock) {
+                this.editorPro.editor.commands.insertShortcodeBlock(
+                    shortcode.name,
+                    params,
+                    attributes,
+                    urlValue,
+                    placeholderId
+                );
+            } else {
+                // Fallback to the original method
+                this.editorPro.insertShortcode(shortcode, shortcodeText, attributes, urlValue);
+            }
+
             this.editorPro.editor?.commands?.focus?.();
         },
 
@@ -778,7 +821,7 @@
                 return '';
             }
 
-            return html
+            let cleaned = html
                 .replace(/<\s*br\s*\/?\s*>/gi, '\n')
                 .replace(/<[^>]+>/g, '')
                 .replace(/&nbsp;/gi, ' ')
@@ -786,6 +829,18 @@
                 .replace(/&lt;/gi, '<')
                 .replace(/&gt;/gi, '>')
                 .trim();
+
+            // Handle markdown links: [text](url) -> url
+            const mdLinkMatch = cleaned.match(/^\[([^\]]+)\]\(([^)]+)\)$/);
+            if (mdLinkMatch && mdLinkMatch[2]) {
+                console.log('[YouTube] stripHtml: extracted URL from markdown link:', mdLinkMatch[2]);
+                return mdLinkMatch[2].trim();
+            }
+
+            // Handle inline markdown links within text
+            cleaned = cleaned.replace(/\[([^\]]+)\]\(([^)]+)\)/g, '$2');
+
+            return cleaned;
         },
 
         isValidUrl(url) {
