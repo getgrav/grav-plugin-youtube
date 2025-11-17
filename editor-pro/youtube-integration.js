@@ -1,7 +1,7 @@
 (function() {
     'use strict';
 
-    const YOUTUBE_ICON = '<svg viewBox="-21 -117 682.66672 682" xmlns="http://www.w3.org/2000/svg"><path d="m626.8125 64.035156c-7.375-27.417968-28.992188-49.03125-56.40625-56.414062-50.082031-13.703125-250.414062-13.703125-250.414062-13.703125s-200.324219 0-250.40625 13.183593c-26.886719 7.375-49.03125 29.519532-56.40625 56.933594-13.179688 50.078125-13.179688 153.933594-13.179688 153.933594s0 104.378906 13.179688 153.933594c7.382812 27.414062 28.992187 49.027344 56.410156 56.410156 50.605468 13.707031 250.410156 13.707031 250.410156 13.707031s200.324219 0 250.40625-13.183593c27.417969-7.378907 49.03125-28.992188 56.414062-56.40625 13.175782-50.082032 13.175782-153.933594 13.175782-153.933594s.527344-104.382813-13.183594-154.460938zm-370.601562 249.878906v-191.890624l166.585937 95.945312zm0 0"/></svg>';
+    const YOUTUBE_ICON = '<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="icon icon-tabler icons-tabler-outline icon-tabler-brand-youtube"><path stroke="none" d="M0 0h24v24H0z" fill="none"/><path d="M2 8a4 4 0 0 1 4 -4h12a4 4 0 0 1 4 4v8a4 4 0 0 1 -4 4h-12a4 4 0 0 1 -4 -4z" /><path d="M10 9l5 3l-5 3z" /></svg>';
 
     const YES_NO_OPTIONS = [
         { label: 'Use plugin default', value: '' },
@@ -12,18 +12,16 @@
     const URL_FIELD = {
         name: 'url',
         label: 'YouTube Video URL',
-        type: 'url',
-        placeholder: 'https://www.youtube.com/watch?v=XXXXXXX',
-        required: true
+        placeholder: 'https://www.youtube.com/watch?v=XXXXXXX'
     };
 
-    const YOUTUBE_FIELD_GROUPS = [
+    const FIELD_GROUPS = [
         {
             title: 'Display Options',
             open: true,
             fields: [
-                { name: 'width', label: 'Width (px)', type: 'number', placeholder: '640', min: 0 },
-                { name: 'height', label: 'Height (px)', type: 'number', placeholder: '360', min: 0 },
+                { name: 'width', label: 'Width (px)', type: 'number', placeholder: '640' },
+                { name: 'height', label: 'Height (px)', type: 'number', placeholder: '360' },
                 { name: 'class', label: 'CSS Class', type: 'text', placeholder: 'custom-class' },
                 { name: 'thumbnail', label: 'Custom Thumbnail', type: 'text', placeholder: 'image-name.jpg' },
                 { name: 'privacy_enhanced_mode', label: 'Privacy Enhanced Mode', type: 'select', options: YES_NO_OPTIONS },
@@ -85,10 +83,7 @@
         }
     ];
 
-    const ATTRIBUTE_FIELDS = YOUTUBE_FIELD_GROUPS.reduce((all, group) => {
-        group.fields.forEach(field => all.push(field));
-        return all;
-    }, []);
+    const ATTRIBUTE_FIELDS = FIELD_GROUPS.flatMap(group => group.fields.map(field => field.name));
 
     function waitForEditorPro(callback) {
         if (window.EditorPro && window.EditorPro.registerPlugin) {
@@ -98,9 +93,10 @@
         }
     }
 
-    const EditorProYoutubePlugin = {
+    const Plugin = {
         name: 'youtube-shortcode',
-        attributeFields: ATTRIBUTE_FIELDS,
+        patchedShowForm: false,
+        patchedShowEditForm: false,
 
         init(editorPro) {
             this.editorPro = editorPro;
@@ -108,12 +104,16 @@
                 return;
             }
 
-            if (!editorPro.toolbar.querySelector('[data-toolbar-item="youtubeShortcode"]')) {
-                this.addToolbarButton();
-            }
+            this.addToolbarButton();
+            this.interceptShowForm();
+            this.interceptShowEditForm();
         },
 
         addToolbarButton() {
+            if (this.editorPro.toolbar.querySelector('[data-toolbar-item="youtubeShortcode"]')) {
+                return;
+            }
+
             const toolbar = this.editorPro.toolbar;
             const button = document.createElement('button');
             button.type = 'button';
@@ -123,11 +123,11 @@
             button.innerHTML = YOUTUBE_ICON;
 
             const leftSection = toolbar.querySelector('.toolbar-left');
-            const afterShortcode = leftSection ? leftSection.querySelector('[data-toolbar-item="shortcodeBlock"]') : null;
-            const afterHtml = leftSection ? leftSection.querySelector('[data-toolbar-item="htmlBlock"]') : null;
+            const afterShortcode = leftSection?.querySelector('[data-toolbar-item="shortcodeBlock"]');
+            const afterHtml = leftSection?.querySelector('[data-toolbar-item="htmlBlock"]');
             const insertAfter = afterShortcode || afterHtml;
 
-            if (insertAfter && insertAfter.parentNode) {
+            if (insertAfter?.parentNode) {
                 insertAfter.parentNode.insertBefore(button, insertAfter.nextSibling);
             } else if (leftSection) {
                 leftSection.appendChild(button);
@@ -138,166 +138,214 @@
             button.addEventListener('click', (event) => {
                 event.preventDefault();
                 event.stopPropagation();
-                this.showYoutubeModal();
+                this.showModal();
             });
         },
 
-        showYoutubeModal() {
-            const modalContent = this.buildModalContent();
-            this.editorPro.createModal(
-                'Insert YouTube Shortcode',
-                modalContent,
-                (modalElement) => this.focusFirstField(modalElement),
-                null,
-                [
+        interceptShowForm() {
+            if (this.patchedShowForm || typeof this.editorPro.showShortcodeForm !== 'function') {
+                return;
+            }
+
+            const original = this.editorPro.showShortcodeForm.bind(this.editorPro);
+            this.editorPro.showShortcodeForm = (name, ...args) => {
+                if ((name || '').toLowerCase() === 'youtube') {
+                    this.showModal();
+                    return;
+                }
+
+                return original(name, ...args);
+            };
+
+            this.patchedShowForm = true;
+        },
+
+        interceptShowEditForm() {
+            if (this.patchedShowEditForm || typeof this.editorPro.showShortcodeEditForm !== 'function') {
+                return;
+            }
+
+            const original = this.editorPro.showShortcodeEditForm.bind(this.editorPro);
+            this.editorPro.showShortcodeEditForm = (shortcode, block, blockId, onUpdateCallback, ...rest) => {
+                const name = (shortcode?.name || shortcode?.shortcodeName || '').toLowerCase();
+                if (name === 'youtube') {
+                    this.showModal({
+                        mode: 'edit',
+                        shortcode,
+                        block,
+                        blockId,
+                        onUpdateCallback,
+                        initialAttributes: { ...(block?.attributes || {}) },
+                        initialUrl: this.extractUrl(block)
+                    });
+                    return;
+                }
+
+                return original(shortcode, block, blockId, onUpdateCallback, ...rest);
+            };
+
+            this.patchedShowEditForm = true;
+        },
+
+        showModal(options = {}) {
+            const mode = options.mode || 'create';
+            const modalContent = this.buildModalContents(options);
+            const title = mode === 'edit' ? 'Edit YouTube Shortcode' : 'Insert YouTube Shortcode';
+            const buttons = mode === 'edit'
+                ? [
+                    { text: 'Delete', style: 'danger', callback: () => this.handleDelete(options) },
+                    { text: 'Cancel', style: 'secondary', callback: () => {} },
+                    { text: 'Update', style: 'primary', callback: (modalElement) => this.handleUpdate(modalElement, options) }
+                ]
+                : [
                     { text: 'Cancel', style: 'secondary', callback: () => {} },
                     { text: 'Insert', style: 'primary', callback: (modalElement) => this.handleInsert(modalElement) }
-                ]
+                ];
+
+            this.editorPro.createModal(
+                title,
+                modalContent,
+                (modalElement) => this.focusUrlInput(modalElement),
+                null,
+                buttons
             );
         },
 
-        focusFirstField(modalElement) {
-            const urlInput = modalElement.querySelector('[data-youtube-field="url"]');
-            if (urlInput) {
-                setTimeout(() => urlInput.focus(), 50);
-            }
-        },
+        buildModalContents(options = {}) {
+            const shortcode = options.shortcode || this.getShortcodeConfig();
+            const defaults = this.getDefaultAttributes(shortcode);
+            const values = { ...defaults, ...(options.initialAttributes || {}) };
+            const initialUrl = options.initialUrl || '';
 
-        buildModalContent() {
-            const styleBlock = `
-                <style>
-                    .youtube-shortcode-form label {
-                        display: block;
-                        font-weight: 600;
-                        margin-bottom: 4px;
-                        font-size: 13px;
-                    }
-                    .youtube-shortcode-form input,
-                    .youtube-shortcode-form select {
-                        width: 100%;
-                        padding: 6px 8px;
-                        border: 1px solid #dcdcdc;
-                        border-radius: 4px;
-                        font-size: 14px;
-                    }
-                    .youtube-field-group {
-                        margin-bottom: 12px;
-                        border: 1px solid #ececec;
-                        border-radius: 4px;
-                        padding: 8px 12px;
-                        background: #fafafa;
-                    }
-                    .youtube-field-group summary {
-                        cursor: pointer;
-                        font-weight: 600;
-                    }
-                    .youtube-field-grid {
-                        display: grid;
-                        grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
-                        gap: 12px;
-                        margin-top: 10px;
-                    }
-                    .youtube-field-grid .form-group {
-                        margin: 0;
-                    }
-                    .youtube-url-field {
-                        margin-bottom: 16px;
-                    }
-                </style>
-            `;
+            const css = `
+            <style>
+                .youtube-shortcode-form {
+                    margin: 0;
+                    padding: 0;
+                    border: 0;
+                    background: transparent;
+                    box-shadow: none;
+                    color: var(--editor-text, #111827);
+                }
+                .youtube-shortcode-form label {
+                    display: block;
+                    margin-bottom: 4px;
+                    font-weight: 600;
+                    font-size: 13px;
+                    color: var(--editor-text, #111827);
+                }
+                .youtube-shortcode-form input,
+                .youtube-shortcode-form select {
+                    width: 100%;
+                    padding: 6px 8px;
+                    border: 1px solid var(--toolbar-border, #d1d5db);
+                    border-radius: 4px;
+                    background: var(--editor-bg, #ffffff);
+                    color: var(--editor-text, #111827);
+                    transition: border-color 0.15s ease, box-shadow 0.15s ease;
+                }
+                .youtube-shortcode-form input::placeholder {
+                    color: var(--editor-text, #111827);
+                    opacity: 0.35;
+                }
+                .youtube-shortcode-form input[type="number"] {
+                    -moz-appearance: textfield;
+                    appearance: textfield;
+                    background: var(--editor-bg, #ffffff);
+                    color: var(--editor-text, #111827);
+                    border: 1px solid var(--toolbar-border, #d1d5db);
+                }
+                .youtube-shortcode-form input[type="number"]::-webkit-outer-spin-button,
+                .youtube-shortcode-form input[type="number"]::-webkit-inner-spin-button {
+                    -webkit-appearance: none;
+                    margin: 0;
+                }
+                .youtube-shortcode-form input:focus,
+                .youtube-shortcode-form select:focus {
+                    outline: none;
+                    border-color: var(--button-active, #3b82f6);
+                    box-shadow: 0 0 0 1px rgba(59,130,246,0.2);
+                }
+                .youtube-field-group {
+                    border: 1px solid var(--toolbar-border, #d1d5db);
+                    border-radius: 6px;
+                    padding: 8px 12px;
+                    margin-bottom: 12px;
+                    background: var(--editor-bg, #ffffff);
+                    box-shadow: none;
+                }
+                .youtube-field-grid {
+                    display: grid;
+                    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+                    gap: 12px;
+                    margin-top: 10px;
+                }
+                .youtube-field-helper {
+                    display: block;
+                    margin-top: 4px;
+                    font-size: 12px;
+                    color: var(--editor-text, #111827);
+                    opacity: 0.7;
+                }
+            </style>`;
 
             const urlField = `
-                <div class="form-group youtube-url-field">
+                <div class="form-group">
                     <label for="youtube-url">${URL_FIELD.label}</label>
-                    <input type="url" id="youtube-url" data-youtube-field="url" placeholder="${URL_FIELD.placeholder}" ${URL_FIELD.required ? 'required' : ''} />
-                </div>
-            `;
+                    <input type="url" id="youtube-url" data-youtube-field="url" placeholder="${URL_FIELD.placeholder}" value="${initialUrl}" required />
+                    <span class="youtube-field-helper">Paste the full YouTube or youtu.be URL.</span>
+                </div>`;
 
-            const groupsMarkup = YOUTUBE_FIELD_GROUPS.map(group => `
+            const groupsMarkup = FIELD_GROUPS.map(group => `
                 <details class="youtube-field-group" ${group.open ? 'open' : ''}>
                     <summary>${group.title}</summary>
                     <div class="youtube-field-grid">
-                        ${group.fields.map(field => this.renderField(field)).join('')}
+                        ${group.fields.map(field => this.renderField(field, values[field.name] || '')).join('')}
                     </div>
-                </details>
-            `).join('');
+                </details>`).join('');
 
             return `
-                ${styleBlock}
+                ${css}
                 <form class="youtube-shortcode-form">
                     ${urlField}
                     ${groupsMarkup}
-                </form>
-            `;
+                </form>`;
         },
 
-        renderField(field) {
+        renderField(field, value) {
             const fieldId = `youtube-field-${field.name}`;
-            if (field.type === 'select' && Array.isArray(field.options)) {
-                const options = field.options.map(option => `
-                    <option value="${option.value}">${option.label}</option>
-                `).join('');
-
+            if (field.type === 'select') {
+                const options = field.options.map(opt => `<option value="${opt.value}" ${opt.value === value ? 'selected' : ''}>${opt.label}</option>`).join('');
                 return `
                     <div class="form-group">
                         <label for="${fieldId}">${field.label}</label>
-                        <select id="${fieldId}" data-youtube-field="${field.name}">
-                            ${options}
-                        </select>
-                    </div>
-                `;
+                        <select id="${fieldId}" data-youtube-field="${field.name}">${options}</select>
+                    </div>`;
             }
 
-            const inputType = field.type === 'number' ? 'number' : 'text';
-            const attributes = [];
-            if (field.placeholder) {
-                attributes.push(`placeholder="${field.placeholder}"`);
-            }
-            if (typeof field.min !== 'undefined') {
-                attributes.push(`min="${field.min}"`);
-            }
+            const attrs = [];
+            if (field.placeholder) attrs.push(`placeholder="${field.placeholder}"`);
+            if (typeof field.min !== 'undefined') attrs.push(`min="${field.min}"`);
 
+            const type = field.type === 'number' ? 'number' : 'text';
             return `
                 <div class="form-group">
                     <label for="${fieldId}">${field.label}</label>
-                    <input type="${inputType}" id="${fieldId}" data-youtube-field="${field.name}" ${attributes.join(' ')} />
-                </div>
-            `;
+                    <input type="${type}" id="${fieldId}" data-youtube-field="${field.name}" value="${value}" ${attrs.join(' ')} />
+                </div>`;
         },
 
-        handleInsert(modalElement) {
-            const form = modalElement.querySelector('.youtube-shortcode-form');
-            if (!form) {
-                return;
-            }
-
-            const urlInput = form.querySelector('[data-youtube-field="url"]');
-            const urlValue = urlInput ? urlInput.value.trim() : '';
-
-            if (!urlValue) {
-                alert('Please enter a YouTube video URL.');
-                return;
-            }
-
-            if (!this.isValidYoutubeUrl(urlValue)) {
-                alert('Please enter a valid youtube.com or youtu.be URL.');
-                return;
-            }
-
-            const attributes = this.collectAttributes(form);
-            const shortcodeConfig = this.getShortcodeConfig();
-            const shortcodeText = this.editorPro.buildShortcodeString(shortcodeConfig, attributes, urlValue);
-            this.editorPro.insertShortcode(shortcodeConfig, shortcodeText, attributes, urlValue);
-
-            if (this.editorPro.editor && this.editorPro.editor.commands && typeof this.editorPro.editor.commands.focus === 'function') {
-                this.editorPro.editor.commands.focus();
+        focusUrlInput(modalElement) {
+            const url = modalElement.querySelector('[data-youtube-field="url"]');
+            if (url) {
+                setTimeout(() => url.focus(), 50);
             }
         },
 
         collectAttributes(formElement) {
             const attributes = {};
-            this.attributeFields.forEach(field => {
-                const input = formElement.querySelector(`[data-youtube-field="${field.name}"]`);
+            ATTRIBUTE_FIELDS.forEach(name => {
+                const input = formElement.querySelector(`[data-youtube-field="${name}"]`);
                 if (!input) {
                     return;
                 }
@@ -307,25 +355,168 @@
                     value = value.trim();
                 }
 
-                if (field.type === 'select') {
-                    value = input.value;
-                }
-
                 if (value === '') {
                     return;
                 }
 
-                if (field.type === 'number') {
-                    const numeric = Number(value);
-                    if (!Number.isNaN(numeric)) {
-                        attributes[field.name] = numeric.toString();
+                if (input.type === 'number') {
+                    const num = Number(value);
+                    if (!Number.isNaN(num)) {
+                        attributes[name] = num.toString();
                     }
                     return;
                 }
 
-                attributes[field.name] = value;
+                attributes[name] = value;
             });
             return attributes;
+        },
+
+        removeEmpty(attributes) {
+            const cleaned = {};
+            Object.entries(attributes).forEach(([key, value]) => {
+                if (value === null || value === undefined) {
+                    return;
+                }
+                if (typeof value === 'string') {
+                    const trimmed = value.trim();
+                    if (trimmed !== '') {
+                        cleaned[key] = trimmed;
+                    }
+                    return;
+                }
+                cleaned[key] = value;
+            });
+            return cleaned;
+        },
+
+        handleInsert(modalElement) {
+            const form = modalElement.querySelector('.youtube-shortcode-form');
+            const urlField = form.querySelector('[data-youtube-field="url"]');
+            const urlValue = urlField.value.trim();
+
+            if (!urlValue || !this.isValidUrl(urlValue)) {
+                alert('Please enter a valid YouTube URL.');
+                return;
+            }
+
+            const attributes = this.removeEmpty(this.collectAttributes(form));
+            const shortcode = this.getShortcodeConfig();
+            const shortcodeText = this.editorPro.buildShortcodeString(shortcode, attributes, urlValue);
+            this.editorPro.insertShortcode(shortcode, shortcodeText, attributes, urlValue);
+            this.editorPro.editor?.commands?.focus?.();
+        },
+
+        handleUpdate(modalElement, context) {
+            const form = modalElement.querySelector('.youtube-shortcode-form');
+            const urlField = form.querySelector('[data-youtube-field="url"]');
+            const urlValue = urlField.value.trim();
+
+            if (!urlValue || !this.isValidUrl(urlValue)) {
+                alert('Please enter a valid YouTube URL.');
+                return;
+            }
+
+            const attributes = this.removeEmpty(this.collectAttributes(form));
+            const config = context.shortcode || this.getShortcodeConfig();
+            const shortcodeText = this.editorPro.buildShortcodeString(config, attributes, urlValue);
+            const params = this.editorPro.buildParamsString(attributes);
+
+            if (typeof context.onUpdateCallback === 'function') {
+                context.onUpdateCallback({
+                    tagName: config.name,
+                    params,
+                    attributes,
+                    content: urlValue,
+                    type: 'shortcode',
+                    shortcodeConfig: config
+                });
+                return;
+            }
+
+            const blockId = context.blockId;
+            const block = context.block;
+            if (!block || !blockId) {
+                return;
+            }
+
+            block.attributes = attributes;
+            block.content = urlValue;
+            block.original = shortcodeText;
+            block.params = params;
+            block.shortcodeConfig = config;
+            this.editorPro.preservedBlocks.set(blockId, block);
+
+            this.updateBlockDom(blockId, block, config);
+            this.syncTipTapNode(blockId, block);
+            this.editorPro.applyShortcodeCSS?.(blockId, config, attributes);
+            this.editorPro.updateTextarea();
+        },
+
+        handleDelete(context) {
+            if (context.blockId && typeof this.editorPro.deleteBlock === 'function') {
+                this.editorPro.deleteBlock(context.blockId);
+            }
+        },
+
+        updateBlockDom(blockId, block, config) {
+            const element = document.querySelector(`[data-block-id="${blockId}"]`);
+            if (!element) {
+                return;
+            }
+
+            if (block) {
+                if (!block.content && typeof block.original === 'string') {
+                    const match = block.original.match(/\[youtube[^\]]*\]([\s\S]*?)\[\/youtube\]/i);
+                    if (match && match[1]) {
+                        block.content = this.stripHtml(match[1]);
+                    }
+                }
+
+                if (!block.content && block.tagName === 'youtube') {
+                    // Fallback: attempt to read from the in-editor DOM
+                    const blockElement = document.querySelector(`[data-placeholder-id="${blockId}"]`);
+                    if (blockElement) {
+                        block.content = blockElement.innerText.trim();
+                    }
+                }
+            }
+
+            const header = element.querySelector('.preserved-block-header span');
+            const registry = this.editorPro.shortcodeRegistry || window.EditorPro?.pluginSystem?.shortcodeRegistry;
+            const title = registry?.generateTitleBar?.(block.tagName || config.name, block.attributes || {}) || 'YouTube Video';
+            if (header) {
+                header.innerHTML = title;
+            }
+
+            const contentDom = element.querySelector('.preserved-block-content');
+            if (contentDom) {
+                contentDom.textContent = block.content || '';
+                contentDom.setAttribute('data-block-data', JSON.stringify(block));
+            }
+        },
+
+        syncTipTapNode(blockId, block) {
+            const editor = this.editorPro.editor;
+            if (!editor) {
+                return;
+            }
+
+            const { state, view } = editor;
+            state.doc.descendants((node, pos) => {
+                if (node.type.name === 'preservedBlock' && node.attrs.blockId === blockId) {
+                    const tr = state.tr;
+                    tr.setNodeMarkup(pos, null, {
+                        blockId,
+                        blockType: 'shortcode',
+                        blockContent: block.content || '',
+                        blockData: block
+                    });
+                    view.dispatch(tr);
+                    return false;
+                }
+                return undefined;
+            });
         },
 
         getShortcodeConfig() {
@@ -333,31 +524,105 @@
                 return this.shortcodeConfig;
             }
 
-            const registry = this.editorPro.shortcodeRegistry || (window.EditorPro && window.EditorPro.pluginSystem && window.EditorPro.pluginSystem.shortcodeRegistry);
-            if (registry && typeof registry.get === 'function') {
+            const registry = this.editorPro.shortcodeRegistry || window.EditorPro?.pluginSystem?.shortcodeRegistry;
+            if (registry?.get) {
                 const config = registry.get('youtube');
                 if (config) {
+                    if (!Array.isArray(config.titleBarAttributes) || config.titleBarAttributes.length === 0) {
+                        config.titleBarAttributes = ['width', 'height', 'class'];
+                    }
                     this.shortcodeConfig = config;
                     return config;
                 }
             }
 
             const fallbackAttributes = {};
-            this.attributeFields.forEach(field => {
-                fallbackAttributes[field.name] = { type: 'text', default: '' };
+            ATTRIBUTE_FIELDS.forEach(name => {
+                fallbackAttributes[name] = { type: 'text', default: '' };
             });
 
             this.shortcodeConfig = {
                 name: 'youtube',
                 type: 'block',
                 hasContent: true,
-                attributes: fallbackAttributes
+                attributes: fallbackAttributes,
+                titleBarAttributes: ['width', 'height', 'class']
             };
 
             return this.shortcodeConfig;
         },
 
-        isValidYoutubeUrl(url) {
+        getDefaultAttributes(shortcode) {
+            const defaults = {};
+            Object.entries(shortcode.attributes || {}).forEach(([name, config]) => {
+                if (config && Object.prototype.hasOwnProperty.call(config, 'default')) {
+                    defaults[name] = config.default || '';
+                }
+            });
+            return defaults;
+        },
+
+        extractUrl(block) {
+            if (!block) {
+                return '';
+            }
+
+            const extractFromHtml = (source) => {
+                if (!source || typeof source !== 'string') {
+                    return '';
+                }
+
+                const normalized = source.replace(/<br\s*\/?\s*>/gi, '\n');
+
+                let match = normalized.match(/<a[^>]*href="([^"]+)"[^>]*>(?:[^<]*)<\/a>/i);
+                if (match && match[1]) {
+                    return match[1].trim();
+                }
+
+                match = normalized.match(/<p[^>]*>([\s\S]*?)<\/p>/i);
+                if (match && match[1]) {
+                    return this.stripHtml(match[1]).trim();
+                }
+
+                return this.stripHtml(normalized).trim();
+            };
+
+            if (block.content && typeof block.content === 'string') {
+                const fromContent = extractFromHtml(block.content);
+                if (fromContent) {
+                    return fromContent;
+                }
+            }
+
+            if (block.original && typeof block.original === 'string') {
+                const shortcodeMatch = block.original.match(/\[youtube[^\]]*\]([\s\S]*?)\[\/youtube\]/i);
+                if (shortcodeMatch && shortcodeMatch[1]) {
+                    const extracted = extractFromHtml(shortcodeMatch[1]);
+                    if (extracted) {
+                        return extracted;
+                    }
+                }
+            }
+
+            return '';
+        },
+
+        stripHtml(html) {
+            if (!html || typeof html !== 'string') {
+                return '';
+            }
+
+            return html
+                .replace(/<\s*br\s*\/?\s*>/gi, '\n')
+                .replace(/<[^>]+>/g, '')
+                .replace(/&nbsp;/gi, ' ')
+                .replace(/&amp;/gi, '&')
+                .replace(/&lt;/gi, '<')
+                .replace(/&gt;/gi, '>')
+                .trim();
+        },
+
+        isValidUrl(url) {
             try {
                 const parsed = new URL(url);
                 const host = parsed.hostname.toLowerCase();
@@ -370,8 +635,7 @@
 
     waitForEditorPro(() => {
         if (window.EditorPro && window.EditorPro.registerPlugin) {
-            window.EditorPro.registerPlugin(EditorProYoutubePlugin);
-            console.log('YouTube shortcode integration loaded for Editor Pro');
+            window.EditorPro.registerPlugin(Plugin);
         }
     });
 })();
