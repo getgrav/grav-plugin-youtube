@@ -169,6 +169,31 @@
             this.editorPro.showShortcodeEditForm = (shortcode, block, blockId, onUpdateCallback, ...rest) => {
                 const name = (shortcode?.name || shortcode?.shortcodeName || '').toLowerCase();
                 if (name === 'youtube') {
+                    console.log('[YouTube] Edit form triggered with:', { shortcode, block, blockId, onUpdateCallback, rest, allArgs: arguments });
+
+                    // Ensure block.content is populated before trying to extract URL
+                    if (block && !block.content && typeof block.original === 'string') {
+                        const match = block.original.match(/\[youtube[^\]]*\]([\s\S]*?)\[\/youtube\]/i);
+                        if (match && match[1]) {
+                            block.content = this.stripHtml(match[1]).trim();
+                            console.log('[YouTube] Populated block.content from block.original:', block.content);
+                        }
+                    }
+
+                    // Also try to get from blockContent if available
+                    if (block && !block.content && block.blockContent) {
+                        block.content = block.blockContent;
+                        console.log('[YouTube] Populated block.content from block.blockContent:', block.content);
+                    }
+
+                    let initialUrl = this.extractUrl(block) || this.extractUrlFromDom(blockId);
+
+                    // Last resort: try to extract from the editor's textarea content
+                    if (!initialUrl && this.editorPro.textarea) {
+                        initialUrl = this.extractUrlFromTextarea(block);
+                    }
+
+                    console.log('[YouTube] Extracted URL:', initialUrl);
                     this.showModal({
                         mode: 'edit',
                         shortcode,
@@ -176,7 +201,7 @@
                         blockId,
                         onUpdateCallback,
                         initialAttributes: { ...(block?.attributes || {}) },
-                        initialUrl: this.extractUrl(block)
+                        initialUrl
                     });
                     return;
                 }
@@ -307,9 +332,120 @@
             return `
                 ${css}
                 <form class="youtube-shortcode-form">
-                    ${urlField}
-                    ${groupsMarkup}
-                </form>`;
+                ${urlField}
+                ${groupsMarkup}
+            </form>`;
+        },
+
+        extractUrlFromTextarea(block) {
+            if (!this.editorPro.textarea) {
+                console.log('[YouTube] extractUrlFromTextarea: no textarea found');
+                return '';
+            }
+
+            const textareaContent = this.editorPro.textarea.value;
+            console.log('[YouTube] extractUrlFromTextarea: searching in textarea content');
+
+            // Try to find all youtube shortcodes in the textarea
+            const regex = /\[youtube([^\]]*)\]([\s\S]*?)\[\/youtube\]/gi;
+            const matches = [...textareaContent.matchAll(regex)];
+
+            console.log('[YouTube] extractUrlFromTextarea: found', matches.length, 'youtube shortcodes');
+
+            if (matches.length === 0) {
+                return '';
+            }
+
+            // If we only have one match, use it
+            if (matches.length === 1) {
+                const url = this.stripHtml(matches[0][2]).trim();
+                console.log('[YouTube] extractUrlFromTextarea: single match found:', url);
+                return url;
+            }
+
+            // If we have multiple matches, try to match by attributes
+            if (block && block.attributes) {
+                for (const match of matches) {
+                    const attrs = match[1];
+                    // Simple heuristic: if any attribute matches, assume this is our shortcode
+                    let isMatch = true;
+                    for (const [key, value] of Object.entries(block.attributes)) {
+                        if (value && !attrs.includes(value)) {
+                            isMatch = false;
+                            break;
+                        }
+                    }
+                    if (isMatch) {
+                        const url = this.stripHtml(match[2]).trim();
+                        console.log('[YouTube] extractUrlFromTextarea: matched by attributes:', url);
+                        return url;
+                    }
+                }
+            }
+
+            // Fallback: return the first match
+            const url = this.stripHtml(matches[0][2]).trim();
+            console.log('[YouTube] extractUrlFromTextarea: using first match:', url);
+            return url;
+        },
+
+        extractUrlFromDom(blockId) {
+            if (!blockId) {
+                console.log('[YouTube] extractUrlFromDom: no blockId provided');
+                return '';
+            }
+
+            console.log('[YouTube] extractUrlFromDom: looking for blockId:', blockId);
+
+            // Try multiple selectors to find the block
+            let preservedBlock = document.querySelector(`[data-preserved-block="true"][data-block-id="${blockId}"]`);
+            if (!preservedBlock) {
+                preservedBlock = document.querySelector(`[data-block-id="${blockId}"]`);
+            }
+            if (!preservedBlock) {
+                preservedBlock = document.querySelector(`[data-placeholder-id="${blockId}"]`);
+            }
+
+            if (!preservedBlock) {
+                console.log('[YouTube] extractUrlFromDom: block not found in DOM');
+                return '';
+            }
+
+            console.log('[YouTube] extractUrlFromDom: found block element');
+
+            // Try to get data from data-block-data attribute
+            const contentNode = preservedBlock.querySelector('.preserved-block-content') || preservedBlock;
+            const blockDataAttr = contentNode.getAttribute('data-block-data');
+            if (blockDataAttr) {
+                try {
+                    const blockData = JSON.parse(blockDataAttr);
+                    console.log('[YouTube] extractUrlFromDom: parsed block data:', blockData);
+                    if (blockData.content) {
+                        console.log('[YouTube] extractUrlFromDom: extracted from data-block-data.content:', blockData.content);
+                        return blockData.content.trim();
+                    }
+                    if (blockData.blockContent) {
+                        console.log('[YouTube] extractUrlFromDom: extracted from data-block-data.blockContent:', blockData.blockContent);
+                        return blockData.blockContent.trim();
+                    }
+                } catch (e) {
+                    console.log('[YouTube] extractUrlFromDom: failed to parse data-block-data:', e);
+                }
+            }
+
+            // Try to extract from anchor tag
+            const placeholderNode = contentNode.querySelector('[data-placeholder-id]') || contentNode;
+            const link = placeholderNode.querySelector('a[href]');
+            if (link && link.getAttribute('href')) {
+                const href = link.getAttribute('href').trim();
+                console.log('[YouTube] extractUrlFromDom: extracted from <a> href:', href);
+                return href;
+            }
+
+            // Fallback to text content
+            const text = placeholderNode.textContent?.trim();
+            console.log('[YouTube] extractUrlFromDom: extracted from textContent:', text);
+            return text || '';
         },
 
         renderField(field, value) {
@@ -564,8 +700,18 @@
 
         extractUrl(block) {
             if (!block) {
+                console.log('[YouTube] extractUrl: no block provided');
                 return '';
             }
+
+            console.log('[YouTube] extractUrl: block data:', {
+                content: block.content,
+                original: block.original,
+                blockContent: block.blockContent,
+                tagName: block.tagName,
+                allKeys: Object.keys(block),
+                fullBlock: block
+            });
 
             const extractFromHtml = (source) => {
                 if (!source || typeof source !== 'string') {
@@ -576,27 +722,46 @@
 
                 let match = normalized.match(/<a[^>]*href="([^"]+)"[^>]*>(?:[^<]*)<\/a>/i);
                 if (match && match[1]) {
+                    console.log('[YouTube] Extracted URL from <a> tag:', match[1]);
                     return match[1].trim();
                 }
 
                 match = normalized.match(/<p[^>]*>([\s\S]*?)<\/p>/i);
                 if (match && match[1]) {
-                    return this.stripHtml(match[1]).trim();
+                    const stripped = this.stripHtml(match[1]).trim();
+                    console.log('[YouTube] Extracted URL from <p> tag:', stripped);
+                    return stripped;
                 }
 
-                return this.stripHtml(normalized).trim();
+                const stripped = this.stripHtml(normalized).trim();
+                console.log('[YouTube] Extracted URL by stripping HTML:', stripped);
+                return stripped;
             };
 
+            // Try block.content first
             if (block.content && typeof block.content === 'string') {
+                console.log('[YouTube] Trying block.content:', block.content);
                 const fromContent = extractFromHtml(block.content);
                 if (fromContent) {
                     return fromContent;
                 }
             }
 
+            // Try block.blockContent (used by TipTap)
+            if (block.blockContent && typeof block.blockContent === 'string') {
+                console.log('[YouTube] Trying block.blockContent:', block.blockContent);
+                const fromBlockContent = extractFromHtml(block.blockContent);
+                if (fromBlockContent) {
+                    return fromBlockContent;
+                }
+            }
+
+            // Try block.original (the full shortcode string)
             if (block.original && typeof block.original === 'string') {
+                console.log('[YouTube] Trying block.original:', block.original);
                 const shortcodeMatch = block.original.match(/\[youtube[^\]]*\]([\s\S]*?)\[\/youtube\]/i);
                 if (shortcodeMatch && shortcodeMatch[1]) {
+                    console.log('[YouTube] Matched shortcode content:', shortcodeMatch[1]);
                     const extracted = extractFromHtml(shortcodeMatch[1]);
                     if (extracted) {
                         return extracted;
@@ -604,6 +769,7 @@
                 }
             }
 
+            console.log('[YouTube] Failed to extract URL from block');
             return '';
         },
 
