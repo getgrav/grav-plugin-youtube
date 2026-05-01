@@ -1,7 +1,7 @@
 name: YouTube
 slug: youtube
 type: plugin
-version: 4.3.0
+version: 4.3.1
 description: "**YouTube** is a simple plugin that converts markdown links or shortcodes into responsive embeds."
 icon: youtube
 author:
@@ -12,6 +12,9 @@ homepage: https://github.com/getgrav/grav-plugin-youtube
 keywords: youtube, markdown
 bugs: https://github.com/getgrav/grav-plugin-youtube/issues
 license: MIT
+
+compatibility:
+  grav: ['1.7', '2.0']
 
 form:
   validation: strict
