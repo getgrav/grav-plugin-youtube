@@ -14,7 +14,13 @@
                             var videoURL = prompt("Enter the YouTube Video URL. E.g. https://www.youtube.com/watch?v=vQ4qK36UenI");
 
                             if (videoURL) {
-                                var text = '[plugin:youtube](' + videoURL + ')';
+                                // Honor the plugin's "Editor button inserts" setting.
+                                // Shortcode output needs the shortcode-core plugin;
+                                // built-in link output (the default) does not.
+                                var cfg = window.__YOUTUBE_EDITOR_CONFIG || {};
+                                var text = cfg.insert_mode === 'shortcode'
+                                    ? '[youtube]' + videoURL + '[/youtube]'
+                                    : '[plugin:youtube](' + videoURL + ')';
 
                                 //Add text to the editor
                                 var pos     = codemirror.getDoc().getCursor(true);

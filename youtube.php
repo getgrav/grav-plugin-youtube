@@ -21,6 +21,21 @@ class YoutubePlugin extends Plugin
     const YOUTUBE_REGEX = '(?:https?:\/{2}(?:(?:www.youtube(?:-nocookie)?\.com\/(?:[^\/\n\s]+\/\S+\/|(?:v|e(?:mbed)?)\/|\S*?[?&]v=))|(?:youtu\.be\/)))([a-zA-Z0-9_-]{11})(?:\?size=(\d+),(\d+))?';
 
     /**
+     * Rendered embeds awaiting injection, keyed by a plain-text placeholder.
+     * We swap the `[plugin:youtube](url)` link for a placeholder in
+     * onPageContentRaw (pre-Markdown) and inject the real `<iframe>` in
+     * onPageContentProcessed (post-Markdown). This keeps the iframe out of the
+     * Markdown pass, where Grav 2.0's GFM `tagfilter` would otherwise escape it
+     * into inert `&lt;iframe&gt;` text.
+     *
+     * @var array<string,string>
+     */
+    protected $pendingEmbeds = [];
+
+    /** @var int Monotonic counter for unique embed placeholders. */
+    protected $embedCounter = 0;
+
+    /**
      * Return a list of subscribed events.
      *
      * @return array    The list of events of the plugin of the form
@@ -30,6 +45,9 @@ class YoutubePlugin extends Plugin
     {
         return [
             'onPluginsInitialized' => ['onPluginsInitialized', 0],
+            'onApiRegisterRoutes' => ['onApiRegisterRoutes', 0],
+            'onApiMarkdownEditorButtons' => ['onApiMarkdownEditorButtons', 0],
+            'onXssAllowedIframeHosts' => ['onXssAllowedIframeHosts', 0],
             'registerNextGenEditorPlugin' => ['registerNextGenEditorPluginShortcodes', 0],
             'registerEditorProPlugin' => ['registerEditorProPlugin', 0],
             'onEditorProShortcodeRegister' => ['onEditorProShortcodeRegister', 0],
@@ -41,6 +59,22 @@ class YoutubePlugin extends Plugin
      */
     public function onPluginsInitialized()
     {
+        // PSR-4 autoloader for the plugin's classes/ directory. Registered
+        // unconditionally so API controllers resolve on the admin-next/API
+        // path too, where routes are served from cache and onApiRegisterRoutes
+        // doesn't re-fire to require them.
+        spl_autoload_register(static function ($class) {
+            $prefix = 'Grav\\Plugin\\Youtube\\';
+            if (strpos($class, $prefix) !== 0) {
+                return;
+            }
+            $relative = substr($class, strlen($prefix));
+            $path = __DIR__ . '/classes/' . str_replace('\\', '/', $relative) . '.php';
+            if (is_file($path)) {
+                require_once $path;
+            }
+        });
+
         if ($this->isAdmin()) {
             $this->enable([
                 'onTwigSiteVariables' => ['onTwigSiteVariables', 0],
@@ -50,6 +84,7 @@ class YoutubePlugin extends Plugin
 
         $this->enable([
             'onPageContentRaw' => ['onPageContentRaw', 0],
+            'onPageContentProcessed' => ['onPageContentProcessed', 0],
             'onTwigExtensions' => ['onTwigExtensions', 0],
             'onTwigSiteVariables' => ['onTwigSiteVariables', 0],
             'onTwigTemplatePaths' => ['onTwigTemplatePaths', 0],
@@ -102,13 +137,49 @@ class YoutubePlugin extends Plugin
                 // build the replacement embed HTML string
                 $replace = $twig->processTemplate('partials/youtube.html.twig', $options);
 
-                // do the replacement
-                return str_replace($search, $replace, $search);
+                // Defer injecting the raw <iframe> until after Markdown has run
+                // (onPageContentProcessed) so GFM tagfilter can't escape it.
+                // Leave a plain-text placeholder Markdown won't touch.
+                $token = 'GRAVYOUTUBEEMBED' . $this->embedCounter++ . 'X';
+                $this->pendingEmbeds[$token] = $replace;
+
+                return $token;
             };
 
             // set the parsed content back into as raw content
             $page->setRawContent($this->parseLinks($raw, $function, $this::YOUTUBE_REGEX));
         }
+    }
+
+    /**
+     * Swap the deferred placeholders for the rendered embeds, now that Markdown
+     * (and its tagfilter) has run. The `<p>` wrapper Markdown puts around a
+     * lone placeholder is stripped so the embed isn't nested inside a paragraph.
+     *
+     * @param  Event  $event An event object, when `onPageContentProcessed` is fired.
+     */
+    public function onPageContentProcessed(Event $event)
+    {
+        if (empty($this->pendingEmbeds)) {
+            return;
+        }
+
+        /** @var Page $page */
+        $page = $event['page'];
+        $content = $page->getRawContent();
+
+        foreach ($this->pendingEmbeds as $token => $html) {
+            if (strpos($content, $token) === false) {
+                continue;
+            }
+            // Unwrap a paragraph that holds only this placeholder, then replace
+            // any remaining bare occurrences.
+            $content = preg_replace('#<p>\s*' . preg_quote($token, '#') . '\s*</p>#', $html, $content);
+            $content = str_replace($token, $html, $content);
+            unset($this->pendingEmbeds[$token]);
+        }
+
+        $page->setRawContent($content);
     }
 
     /**
@@ -118,6 +189,20 @@ class YoutubePlugin extends Plugin
     {
         require_once __DIR__ . '/classes/Twig/YoutubeTwigExtension.php';
         $this->grav['twig']->twig->addExtension(new YoutubeTwigExtension());
+    }
+
+    /**
+     * Tell Grav's rendered-output XSS scanner that YouTube embed iframes are
+     * trusted. Without this, sites with `security.twig_content.process_enabled`
+     * blank any page containing a YouTube embed (the `<iframe>` is otherwise a
+     * dangerous tag). Subdomains of these hosts match too (e.g. `www.`).
+     */
+    public function onXssAllowedIframeHosts(Event $event): void
+    {
+        $hosts = $event['hosts'];
+        $hosts[] = 'youtube.com';
+        $hosts[] = 'youtube-nocookie.com';
+        $event['hosts'] = $hosts;
     }
 
     /**
@@ -134,8 +219,75 @@ class YoutubePlugin extends Plugin
         }
 
         if ($this->isAdmin() && $this->config->get('plugins.youtube.add_editor_button')) {
+            // Expose the insert mode synchronously for admin-classic editors
+            // (the classic button + the editor-pro integration when running in
+            // classic). Admin-next can't receive inline JS, so its editor-pro
+            // integration fetches the same values from GET /youtube/config.
+            $editorConfig = json_encode([
+                'insert_mode'           => $this->effectiveInsertMode(),
+                'shortcode_core'        => (bool) $this->config->get('plugins.shortcode-core.enabled', false),
+                'privacy_enhanced_mode' => (bool) $this->config->get('plugins.youtube.privacy_enhanced_mode', true),
+                'lazy_load'             => (bool) $this->config->get('plugins.youtube.lazy_load', false),
+            ]);
+            $this->grav['assets']->addInlineJs("window.__YOUTUBE_EDITOR_CONFIG = {$editorConfig};", 1);
             $this->grav['assets']->add('plugin://youtube/admin/editor-button/js/button.js');
         }
+    }
+
+    /**
+     * Resolve the editor insert mode, degrading "shortcode" to the
+     * dependency-free "link" when shortcode-core isn't available to render it.
+     *
+     * @return string 'link' or 'shortcode'
+     */
+    protected function effectiveInsertMode(): string
+    {
+        $mode = $this->config->get('plugins.youtube.editor_insert_mode', 'link');
+        if ($mode === 'shortcode' && !$this->config->get('plugins.shortcode-core.enabled', false)) {
+            return 'link';
+        }
+
+        return $mode === 'shortcode' ? 'shortcode' : 'link';
+    }
+
+    /**
+     * Register API routes for the admin-next editor integration.
+     */
+    public function onApiRegisterRoutes(Event $event): void
+    {
+        $routes = $event['routes'];
+        $controller = \Grav\Plugin\Youtube\Api\YoutubeController::class;
+
+        $routes->get('/youtube/config', [$controller, 'config']);
+    }
+
+    /**
+     * Register the YouTube button on the admin-next default markdown editor
+     * toolbar. The button opens a modal (admin-next/modals/youtube-insert.js)
+     * that builds the markdown and hands it back for insertion.
+     */
+    public function onApiMarkdownEditorButtons(Event $event): void
+    {
+        if (!$this->config->get('plugins.youtube.add_editor_button')) {
+            return;
+        }
+
+        $icon = '<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 8a4 4 0 0 1 4 -4h12a4 4 0 0 1 4 4v8a4 4 0 0 1 -4 4h-12a4 4 0 0 1 -4 -4z" /><path d="M10 9l5 3l-5 3z" /></svg>';
+
+        $buttons = $event['buttons'];
+        $buttons[] = [
+            'id'     => 'youtube',
+            'plugin' => 'youtube',
+            'label'  => 'YouTube Video',
+            'icon'   => $icon,
+            'modal'  => [
+                'component' => 'youtube-insert',
+                'title'     => 'Insert YouTube Video',
+                // Shortcode mode shows many player options, so give it more room.
+                'size'      => $this->effectiveInsertMode() === 'shortcode' ? 'lg' : 'md',
+            ],
+        ];
+        $event['buttons'] = $buttons;
     }
 
     /**
@@ -166,6 +318,12 @@ class YoutubePlugin extends Plugin
 
     public function registerEditorProPlugin(Event $event)
     {
+        // Respect the "Add editor button" toggle, same as the default-editor
+        // and classic-admin buttons.
+        if (!$this->config->get('plugins.youtube.add_editor_button')) {
+            return $event;
+        }
+
         $plugins = $event['plugins'];
         $plugins['js'][] = 'plugin://youtube/editor-pro/youtube-integration.js';
         $event['plugins'] = $plugins;
@@ -175,6 +333,14 @@ class YoutubePlugin extends Plugin
 
     public function onEditorProShortcodeRegister(Event $event)
     {
+        // Only advertise the YouTube shortcode to Editor Pro when the button is
+        // set to shortcode output (and shortcode-core can render it). In
+        // built-in mode the button inserts a [plugin:youtube](url) link, so the
+        // shortcode would be dead weight in the picker.
+        if ($this->effectiveInsertMode() !== 'shortcode') {
+            return;
+        }
+
         $shortcodes = $event['shortcodes'];
         $youtubeIcon = '<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="icon icon-tabler icons-tabler-outline icon-tabler-brand-youtube"><path stroke="none" d="M0 0h24v24H0z" fill="none"/><path d="M2 8a4 4 0 0 1 4 -4h12a4 4 0 0 1 4 4v8a4 4 0 0 1 -4 4h-12a4 4 0 0 1 -4 -4v-8z" /><path d="M10 9l5 3l-5 3z" /></svg>';
 
