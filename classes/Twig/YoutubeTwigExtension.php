@@ -4,8 +4,10 @@ namespace Grav\Plugin\Youtube\Twig;
 
 
 use Grav\Common\Grav;
+use Twig\Extension\AbstractExtension;
+use Twig\TwigFunction;
 
-class YoutubeTwigExtension extends \Twig_Extension
+class YoutubeTwigExtension extends AbstractExtension
 {
     /**
      * Returns extension name.
@@ -23,8 +25,8 @@ class YoutubeTwigExtension extends \Twig_Extension
     public function getFunctions()
     {
         return [
-            new \Twig_SimpleFunction('youtube_embed_url', [$this, 'embedUrl']),
-            new \Twig_SimpleFunction('youtube_thumbnail_url', [$this, 'thumbnailUrl']),
+            new TwigFunction('youtube_embed_url', [$this, 'embedUrl']),
+            new TwigFunction('youtube_thumbnail_url', [$this, 'thumbnailUrl']),
         ];
     }
 

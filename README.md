@@ -27,6 +27,8 @@ You should now have all the plugin files under
 ```
 enabled: true
 built_in_css: true
+add_editor_button: true
+editor_insert_mode: link
 player_parameters:
   autoplay: 0
   cc_load_policy: 0
@@ -95,9 +97,21 @@ Using the shortcode syntax it is also possible to set a custom thumbnail picture
 [youtube lazy_load=true thumbnail="name of media.jpg"]https://www.youtube.com/watch?v=BK8guP9ov2U[/youtube]
 ```
 
-# Editor Pro Integration
+# Editor Button
 
-When the [Editor Pro](https://github.com/trilbymedia/grav-plugin-editor-pro) plugin is installed, YouTube automatically registers a toolbar button and shortcode configuration for it. The modal prompts for the video URL (stored as the shortcode content) and exposes all shortcode attributes through friendly form fields so the generated markdown remains in the `[youtube]https://...[/youtube]` format. No extra configuration is required beyond enabling both plugins.
+The plugin adds a YouTube button to the page content editor. Click it, paste a video URL, and the embed code is inserted for you. Turn the button off with `add_editor_button: false`. The button appears in:
+
+- **Admin 1** — the classic markdown editor toolbar.
+- **Admin 2** — both the default (CodeMirror) markdown editor toolbar and the Editor Pro toolbar.
+
+## Insert mode
+
+The `editor_insert_mode` setting controls what the button inserts:
+
+- `link` (default) — inserts a built-in `[plugin:youtube](url)` link. This is rendered by the YouTube plugin on its own and needs no other plugins.
+- `shortcode` — inserts a `[youtube]...[/youtube]` shortcode with the full set of player options exposed as form fields. This format requires the separate `shortcode-core` plugin to render. If `shortcode-core` isn't enabled, the button falls back to the built-in link so it always works.
+
+In Admin 2 the button is provided through the [Editor Pro](https://github.com/trilbymedia/grav-plugin-editor-pro) plugin's toolbar; in shortcode mode the YouTube shortcode is also registered with Editor Pro so it appears in the shortcode picker.
 
 
 [grav]: http://github.com/getgrav/grav

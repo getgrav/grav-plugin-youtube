@@ -1,3 +1,17 @@
+# v4.4.0
+## 06/27/2026
+
+1. [](#new)
+    * Added the editor button to Admin 2, for both the default markdown editor and the Editor Pro editor
+    * Added an "Editor button inserts" setting to choose between a built-in link or a shortcode
+1. [](#improved)
+    * Built-in link is now the default editor output, so the button works without the shortcode-core plugin
+1. [](#bugfix)
+    * Fixed a fatal error on Grav 2.0 that left the YouTube embed missing — the Twig extension now targets Twig 3
+    * Fixed YouTube embeds blanking the page on Grav 2.0 sites with content-Twig security enabled, by deferring the embed past Markdown and registering YouTube as a trusted iframe host
+
+> Note: the Admin 2 default-editor button needs the API plugin and Admin 2 (admin-next) updates that ship the markdown editor toolbar button hook. Trusted-iframe embedding needs Grav core with the `onXssAllowedIframeHosts` allow-list.
+
 # v4.3.1
 ## 05/01/2026
 

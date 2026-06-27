@@ -3,6 +3,18 @@
 
     const YOUTUBE_ICON = '<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="icon icon-tabler icons-tabler-outline icon-tabler-brand-youtube"><path stroke="none" d="M0 0h24v24H0z" fill="none"/><path d="M2 8a4 4 0 0 1 4 -4h12a4 4 0 0 1 4 4v8a4 4 0 0 1 -4 4h-12a4 4 0 0 1 -4 -4z" /><path d="M10 9l5 3l-5 3z" /></svg>';
 
+    // Defaults mirror youtube.yaml; the real values come from
+    // window.__YOUTUBE_EDITOR_CONFIG (admin-classic, injected inline) or from
+    // GET /youtube/config (admin-next, fetched once). insert_mode decides
+    // whether the button writes a built-in [plugin:youtube](url) link (no
+    // shortcode-core needed) or a [youtube] shortcode (needs shortcode-core).
+    const DEFAULT_CONFIG = {
+        insert_mode: 'link',
+        shortcode_core: false,
+        privacy_enhanced_mode: true,
+        lazy_load: false
+    };
+
     const YES_NO_OPTIONS = [
         { label: 'Use plugin default', value: '' },
         { label: 'Enabled (1)', value: '1' },
@@ -97,6 +109,8 @@
         name: 'youtube-shortcode',
         patchedShowForm: false,
         patchedShowEditForm: false,
+        config: null,
+        configPromise: null,
 
         init(editorPro) {
             this.editorPro = editorPro;
@@ -104,9 +118,181 @@
                 return;
             }
 
+            // Kick off the config fetch early so it's usually ready by click time.
+            this.ensureConfig();
+
             this.addToolbarButton();
             this.interceptShowForm();
             this.interceptShowEditForm();
+        },
+
+        // ─── Config ──────────────────────────────────────
+        apiBase() {
+            return (window.__GRAV_API_SERVER_URL || '') +
+                   (window.__GRAV_API_PREFIX || '/api/v1');
+        },
+
+        ensureConfig() {
+            if (this.config) {
+                return Promise.resolve(this.config);
+            }
+            if (this.configPromise) {
+                return this.configPromise;
+            }
+
+            // admin-classic injects the config inline and synchronously.
+            if (window.__YOUTUBE_EDITOR_CONFIG) {
+                this.config = { ...DEFAULT_CONFIG, ...window.__YOUTUBE_EDITOR_CONFIG };
+                return Promise.resolve(this.config);
+            }
+
+            // admin-next: fetch it once from the API.
+            const headers = {};
+            const token = window.__GRAV_API_TOKEN;
+            if (token) headers['X-API-Token'] = token;
+
+            this.configPromise = fetch(`${this.apiBase()}/youtube/config`, { headers })
+                .then((resp) => (resp.ok ? resp.json() : null))
+                .then((json) => {
+                    const data = json && (json.data || json);
+                    this.config = { ...DEFAULT_CONFIG, ...(data || {}) };
+                    return this.config;
+                })
+                .catch(() => {
+                    // Non-fatal — fall back to the dependency-free link mode.
+                    this.config = { ...DEFAULT_CONFIG };
+                    return this.config;
+                });
+
+            return this.configPromise;
+        },
+
+        insertMode() {
+            const mode = this.config?.insert_mode;
+            return mode === 'shortcode' ? 'shortcode' : 'link';
+        },
+
+        // Route the toolbar click to the right dialog once config is known.
+        async openInsertDialog() {
+            await this.ensureConfig();
+            if (this.insertMode() === 'shortcode') {
+                this.showModal();
+            } else {
+                this.showLinkModal();
+            }
+        },
+
+        // Non-blocking feedback. Never use native alert()/prompt() here —
+        // this script runs inside admin-next. Prefer the host toast, then a
+        // self-removing banner so admin-classic still gets a message.
+        notify(message, type = 'error') {
+            const toast = window.__GRAV_TOAST;
+            if (toast && typeof toast[type] === 'function') {
+                toast[type](message);
+                return;
+            }
+            if (toast && typeof toast.error === 'function') {
+                toast.error(message);
+                return;
+            }
+            const banner = document.createElement('div');
+            banner.textContent = message;
+            banner.style.cssText = 'position:fixed;bottom:20px;left:50%;transform:translateX(-50%);' +
+                'background:#dc2626;color:#fff;padding:10px 16px;border-radius:6px;' +
+                'font-size:14px;z-index:100000;box-shadow:0 4px 12px rgba(0,0,0,.2);';
+            document.body.appendChild(banner);
+            setTimeout(() => banner.remove(), 4000);
+        },
+
+        // ─── Built-in link mode ──────────────────────────
+        showLinkModal() {
+            const css = `
+            <style>
+                .youtube-link-form { margin:0; padding:0; border:0; background:transparent; box-shadow:none; color:var(--editor-text,#111827); }
+                .youtube-link-form label { display:block; margin-bottom:4px; font-weight:600; font-size:13px; color:var(--editor-text,#111827); }
+                .youtube-link-form input { width:100%; padding:6px 8px; border:1px solid var(--toolbar-border,#d1d5db); border-radius:4px; background:var(--editor-bg,#fff); color:var(--editor-text,#111827); }
+                .youtube-link-form input::placeholder { color:var(--editor-text,#111827); opacity:.35; }
+                .youtube-link-form input:focus { outline:none; border-color:var(--button-active,#3b82f6); box-shadow:0 0 0 1px rgba(59,130,246,.2); }
+                .youtube-field-helper { display:block; margin-top:6px; font-size:12px; color:var(--editor-text,#111827); opacity:.7; }
+            </style>`;
+
+            const content = `
+                ${css}
+                <form class="youtube-link-form">
+                    <div class="form-group">
+                        <label for="youtube-link-url">YouTube Video URL</label>
+                        <input type="url" id="youtube-link-url" data-youtube-field="url" placeholder="${URL_FIELD.placeholder}" required />
+                        <span class="youtube-field-helper">Inserts a <code>[plugin:youtube](url)</code> link that the YouTube plugin renders on its own. No shortcode-core required.</span>
+                    </div>
+                </form>`;
+
+            this.editorPro.createModal(
+                'Insert YouTube Video',
+                content,
+                (modalElement) => {
+                    const input = modalElement.querySelector('[data-youtube-field="url"]');
+                    if (input) setTimeout(() => input.focus(), 50);
+                },
+                null,
+                [
+                    { text: 'Cancel', style: 'secondary', callback: () => {} },
+                    { text: 'Insert', style: 'primary', callback: (modalElement) => this.handleLinkInsert(modalElement) }
+                ]
+            );
+        },
+
+        handleLinkInsert(modalElement) {
+            const input = modalElement.querySelector('[data-youtube-field="url"]');
+            const urlValue = (input?.value || '').trim();
+
+            if (!urlValue || !this.isValidUrl(urlValue)) {
+                this.notify('Please enter a valid YouTube URL.');
+                return;
+            }
+
+            this.insertBuiltinLink(urlValue);
+        },
+
+        insertBuiltinLink(url) {
+            const linkText = `[plugin:youtube](${url})`;
+            const editor = this.editorPro.editor;
+
+            // Preferred: insert a real link node at the cursor in the WYSIWYG
+            // editor. A link mark serializes back to [plugin:youtube](url).
+            if (editor?.chain) {
+                editor.chain().focus().insertContent({
+                    type: 'text',
+                    text: 'plugin:youtube',
+                    marks: [{ type: 'link', attrs: { href: url } }]
+                }).run();
+                this.editorPro.updateTextarea?.();
+                return;
+            }
+
+            // Fallback (markdown-source mode / no TipTap): append to the
+            // textarea and re-sync, mirroring the shortcode update path.
+            const ta = this.editorPro.textarea;
+            if (ta) {
+                const val = ta.value || '';
+                const sep = val && !val.endsWith('\n') ? '\n\n' : '';
+                ta.value = `${val}${sep}${linkText}\n`;
+                ta.dispatchEvent(new Event('input', { bubbles: true }));
+                this.resyncFromTextarea();
+            }
+        },
+
+        resyncFromTextarea() {
+            const ep = this.editorPro;
+            const md = ep.textarea ? ep.textarea.value : '';
+            if (typeof ep.updateEditorFromTextarea === 'function') {
+                ep.updateEditorFromTextarea();
+            } else if (typeof ep.syncEditorWithTextarea === 'function') {
+                ep.syncEditorWithTextarea();
+            } else if (typeof ep.loadMarkdown === 'function') {
+                ep.loadMarkdown(md);
+            } else if (typeof ep.markdownToHtml === 'function' && ep.editor) {
+                ep.editor.commands.setContent(ep.markdownToHtml(md), false);
+            }
         },
 
         addToolbarButton() {
@@ -118,8 +304,8 @@
             const button = document.createElement('button');
             button.type = 'button';
             button.setAttribute('data-toolbar-item', 'youtubeShortcode');
-            button.setAttribute('data-tooltip', 'YouTube Shortcode');
-            button.setAttribute('aria-label', 'Insert YouTube Shortcode');
+            button.setAttribute('data-tooltip', 'YouTube Video');
+            button.setAttribute('aria-label', 'Insert YouTube Video');
             button.innerHTML = YOUTUBE_ICON;
 
             const leftSection = toolbar.querySelector('.toolbar-left');
@@ -138,7 +324,7 @@
             button.addEventListener('click', (event) => {
                 event.preventDefault();
                 event.stopPropagation();
-                this.showModal();
+                this.openInsertDialog();
             });
         },
 
@@ -530,7 +716,7 @@
             const urlValue = urlField.value.trim();
 
             if (!urlValue || !this.isValidUrl(urlValue)) {
-                alert('Please enter a valid YouTube URL.');
+                this.notify('Please enter a valid YouTube URL.');
                 return;
             }
 
@@ -589,7 +775,7 @@
             const urlValue = urlField.value.trim();
 
             if (!urlValue || !this.isValidUrl(urlValue)) {
-                alert('Please enter a valid YouTube URL.');
+                this.notify('Please enter a valid YouTube URL.');
                 return;
             }
 

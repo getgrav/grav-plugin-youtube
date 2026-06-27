@@ -1,7 +1,7 @@
 name: YouTube
 slug: youtube
 type: plugin
-version: 4.3.1
+version: 4.4.0
 description: "**YouTube** is a simple plugin that converts markdown links or shortcodes into responsive embeds."
 icon: youtube
 author:
@@ -63,6 +63,18 @@ form:
         0: Disabled
       validate:
         type: bool
+
+    editor_insert_mode:
+      type: select
+      size: medium
+      label: Editor button inserts
+      help: "Choose what the editor button inserts. <strong>Built-in parsing</strong> writes a <code>[plugin:youtube](url)</code> link that this plugin renders on its own (no extra plugins needed). <strong>Shortcode</strong> writes a <code>[youtube]</code> shortcode with the full set of player options, but requires the separate <code>shortcode-core</code> plugin to render."
+      default: link
+      options:
+        link: 'Built-in parsing (markdown link)'
+        shortcode: 'Shortcode (requires shortcode-core)'
+      validate:
+        type: string
 
     privacy_enhanced_mode:
       type: toggle
