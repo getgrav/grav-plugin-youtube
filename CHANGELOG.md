@@ -1,3 +1,11 @@
+# v4.4.1
+## 06/29/2026
+
+1. [](#bugfix)
+    * Shortcode attributes that aren't YouTube player options no longer leak into the embed URL
+    * Sizing and title attributes now apply to the embed iframe instead of being ignored
+    * YouTube embeds now always include a title attribute for accessibility, with an option to customise it
+
 # v4.4.0
 ## 06/27/2026
 

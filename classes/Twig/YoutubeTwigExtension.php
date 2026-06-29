@@ -50,6 +50,14 @@ class YoutubeTwigExtension extends AbstractExtension
             $player_parameters['autoplay'] = true;
         }
 
+        // Defence in depth: never let a non-player key reach the URL, even when
+        // this function is called directly (e.g. the markdown-link path or a
+        // third-party template) without the shortcode handler's partitioning.
+        $player_parameters = array_intersect_key(
+            $player_parameters,
+            array_flip(\Grav\Plugin\YoutubePlugin::PLAYER_PARAMS)
+        );
+
         // filter player parameters to only those not matching YouTube defaults
         $filtered_player_parameters = array();
         foreach ($player_parameters as $key => $value) {
