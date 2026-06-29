@@ -21,6 +21,32 @@ class YoutubePlugin extends Plugin
     const YOUTUBE_REGEX = '(?:https?:\/{2}(?:(?:www.youtube(?:-nocookie)?\.com\/(?:[^\/\n\s]+\/\S+\/|(?:v|e(?:mbed)?)\/|\S*?[?&]v=))|(?:youtu\.be\/)))([a-zA-Z0-9_-]{11})(?:\?size=(\d+),(\d+))?';
 
     /**
+     * Canonical allow-list of genuine YouTube IFrame Player API parameters.
+     * Only these keys may be appended to the embed URL query string. A shortcode
+     * attribute that isn't here is either a plugin-control key (see
+     * CONTROL_PARAMS) or an iframe HTML attribute (width/height/title/…), and
+     * must never leak into the URL sent to YouTube.
+     *
+     * Kept in sync with editor-pro/youtube-integration.js (FIELD_GROUPS).
+     *
+     * @var string[]
+     */
+    const PLAYER_PARAMS = [
+        'autoplay', 'cc_lang_pref', 'cc_load_policy', 'color', 'controls',
+        'disablekb', 'enablejsapi', 'end', 'fs', 'hl', 'iv_load_policy', 'list',
+        'listType', 'loop', 'modestbranding', 'mute', 'origin', 'playlist',
+        'playsinline', 'rel', 'start', 'widget_referrer', 'vq',
+    ];
+
+    /**
+     * Shortcode attributes that drive plugin behaviour and are consumed
+     * internally — never forwarded to the URL nor rendered as iframe attributes.
+     *
+     * @var string[]
+     */
+    const CONTROL_PARAMS = ['privacy_enhanced_mode', 'lazy_load', 'class', 'thumbnail'];
+
+    /**
      * Rendered embeds awaiting injection, keyed by a plain-text placeholder.
      * We swap the `[plugin:youtube](url)` link for a placeholder in
      * onPageContentRaw (pre-Markdown) and inject the real `<iframe>` in
@@ -357,6 +383,7 @@ class YoutubePlugin extends Plugin
             'attributes' => [
                 'width' => ['type' => 'text', 'default' => '', 'title' => 'Width (px)'],
                 'height' => ['type' => 'text', 'default' => '', 'title' => 'Height (px)'],
+                'title' => ['type' => 'text', 'default' => '', 'title' => 'Title (accessibility)'],
                 'class' => ['type' => 'text', 'default' => '', 'title' => 'CSS Class'],
                 'thumbnail' => ['type' => 'text', 'default' => '', 'title' => 'Custom Thumbnail'],
                 'privacy_enhanced_mode' => ['type' => 'text', 'default' => '', 'title' => 'Privacy Enhanced Mode'],

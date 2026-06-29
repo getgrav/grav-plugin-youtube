@@ -34,6 +34,7 @@
             fields: [
                 { name: 'width', label: 'Width (px)', type: 'number', placeholder: '640' },
                 { name: 'height', label: 'Height (px)', type: 'number', placeholder: '360' },
+                { name: 'title', label: 'Title (accessibility)', type: 'text', placeholder: 'YouTube video player' },
                 { name: 'class', label: 'CSS Class', type: 'text', placeholder: 'custom-class' },
                 { name: 'thumbnail', label: 'Custom Thumbnail', type: 'text', placeholder: 'image-name.jpg' },
                 { name: 'privacy_enhanced_mode', label: 'Privacy Enhanced Mode', type: 'select', options: YES_NO_OPTIONS },
