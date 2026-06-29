@@ -44,8 +44,26 @@ class YoutubeShortcode extends Shortcode
                 /** @var Twig $twig */
                 $twig = $this->grav['twig'];
 
+                // Route each shortcode attribute to its correct destination.
+                // Only genuine YouTube player params reach the URL; plugin
+                // controls (privacy_enhanced_mode, lazy_load, class, thumbnail)
+                // are consumed here; everything else (width, height, title, …)
+                // is rendered as an attribute on the <iframe> itself.
+                $player = array();
+                $iframe_attributes = array();
+                foreach ($params as $key => $value) {
+                    if (in_array($key, \Grav\Plugin\YoutubePlugin::PLAYER_PARAMS, true)) {
+                        $player[$key] = $value;
+                    } elseif (in_array($key, \Grav\Plugin\YoutubePlugin::CONTROL_PARAMS, true)) {
+                        continue;
+                    } else {
+                        $iframe_attributes[$key] = $value;
+                    }
+                }
+
                 $options = array(
-                    'player_parameters' => array_merge($pluginConfig['player_parameters'],$params),
+                    'player_parameters' => array_merge($pluginConfig['player_parameters'], $player),
+                    'iframe_attributes' => $iframe_attributes,
                     'privacy_enhanced_mode' => $sc->getParameter('privacy_enhanced_mode',$pluginConfig['privacy_enhanced_mode']),
                     'video_id' => $matches[1],
                     'class' => $sc->getParameter('class'),
@@ -53,15 +71,6 @@ class YoutubeShortcode extends Shortcode
                     'thumbnail' => $custom_thumbnail_url,
                 );
 
-                // check if size was given
-                if (isset($params['width']) && isset($params['height'])) {
-                    $options['video_size'] = true;
-                    $options['video_height'] = $params['width'];
-                    $options['video_width'] = $params['height'];
-                    unset($params['width']);
-                    unset($params['height']);
-                }
-                
                 // build the replacement embed HTML string
                 $replace = $twig->processTemplate('partials/youtube.html.twig', $options);
 

@@ -76,7 +76,7 @@ To use this plugin you simply need to include a youtube URL in markdown link suc
 Will be converted into the following embeded HTML:
 
 ```
-<div class="grav-youtube"><iframe src="https://www.youtube.com/embed/BK8guP9ov2U" frameborder="0" allowfullscreen=""></iframe></div>
+<div class="grav-youtube-wrapper"><div class="grav-youtube"><iframe title="YouTube video player" src="https://www.youtube.com/embed/BK8guP9ov2U" frameborder="0" allowfullscreen=""></iframe></div></div>
 ```
 
 CSS is also loaded to provide the appropriate responsive layout.
@@ -96,6 +96,24 @@ Using the shortcode syntax it is also possible to set a custom thumbnail picture
 ```
 [youtube lazy_load=true thumbnail="name of media.jpg"]https://www.youtube.com/watch?v=BK8guP9ov2U[/youtube]
 ```
+
+## Parameter routing
+
+Shortcode attributes are routed to one of three destinations based on what they are, so a setting only ever ends up where it belongs:
+
+- **YouTube player parameters** (`autoplay`, `rel`, `controls`, `start`, `loop`, etc.) are appended to the embed URL sent to YouTube. See the [YouTube official documentation](https://developers.google.com/youtube/player_parameters) for the full list.
+- **Plugin settings** (`privacy_enhanced_mode`, `lazy_load`, `class`, `thumbnail`) are handled by the plugin and are never added to the URL.
+- **iframe attributes** (`width`, `height`, `title`, and any other attribute) are rendered directly on the `<iframe>` element.
+
+This means a plugin setting such as `privacy_enhanced_mode` no longer leaks into the YouTube URL, and sizing or accessibility attributes apply to the iframe itself:
+
+```
+[youtube width=640 height=360 title="Intro video" privacy_enhanced_mode=true rel=0]https://www.youtube.com/watch?v=BK8guP9ov2U[/youtube]
+```
+
+## Accessibility
+
+Every embed includes a `title` attribute on the iframe, which screen readers announce in place of the video. It defaults to `YouTube video player`; set your own with the `title` shortcode attribute (or the Title field in the Editor Pro dialog) to describe the specific video.
 
 # Editor Button
 
