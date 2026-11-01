@@ -1,3 +1,9 @@
+# v4.4.2
+## 11/01/2026
+
+1. [](#bugfix)
+    * The admin settings now highlight the recommended choice for Privacy-enhanced mode and Lazy load iframes [#59](https://github.com/getgrav/grav-plugin-youtube/pull/59)
+
 # v4.4.1
 ## 06/29/2026
 
