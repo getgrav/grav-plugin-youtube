@@ -80,7 +80,7 @@ form:
       type: toggle
       label: Privacy-enhanced mode
       help: If enabled, YouTube won’t store information about visitors on your web page unless they play the video.
-      highlight: 0
+      highlight: 1
       default: 1
       options:
         1: Enabled
@@ -92,7 +92,7 @@ form:
       type: toggle
       label: Lazy load iframes
       help: If enabled, only the preview thumbnail will be loaded. When clicked, the iframe will be loaded. Improves page load speed.
-      hightlight: 0
+      highlight: 0
       default: 0
       options:
         1: Enabled
